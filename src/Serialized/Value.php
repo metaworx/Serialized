@@ -19,20 +19,25 @@
  * <http://www.gnu.org/licenses/> and please report back to the original
  * author.
  *
- * @author Tom Klingenberg <http://lastflood.com/>
+ * @author  Tom Klingenberg <http://lastflood.com/>
  * @version 0.2.5
  * @package Serialized
  */
 
-Namespace Serialized;
+namespace Serialized;
 
-interface Value {
-	/** @return string datatype */
-	public function getType();
-	/** @return array */
-	public function getParsed();
-	/** @return string */
-	public function getSerialized();
-	/** @param string $serialized */
-	public function setSerialized($serialized);
+interface Value
+{
+    /** @return array */
+    public function getParsed();
+
+    /** @return string */
+    public function getSerialized();
+
+    /** @return string datatype */
+    public function getType();
+
+    /** @param  string  $serialized */
+    public function setSerialized($serialized);
+
 }

@@ -19,31 +19,36 @@
  * <http://www.gnu.org/licenses/> and please report back to the original
  * author.
  *
- * @author Tom Klingenberg <http://lastflood.com/>
+ * @author  Tom Klingenberg <http://lastflood.com/>
  * @version 0.2.5
  * @package Serialized
  */
 
-Namespace Serialized;
+namespace Serialized;
 
 /**
  * Chars of Value Types
  *
  * Concrete implementation of Value Type Chars (represented as string, more or less defined by PHP itself)
  */
-class TypeChars  extends TypeMap {
-	protected static $valType = 'char';
-	protected static $map = array(
-		self::TYPE_ARRAY => 'a',
-		self::TYPE_BOOL => 'b',
-		self::TYPE_FLOAT => 'd',
-		self::TYPE_INT => 'i',
-		self::TYPE_NULL => 'N',
-		self::TYPE_OBJECT => 'O',
-		self::TYPE_STRING => 's',
-		self::TYPE_STRINGENCODED => 'S',
-		self::TYPE_RECURSION => 'r',
-		self::TYPE_RECURSIONREF => 'R',
-		self::TYPE_CUSTOM => 'C',
-	);
+class TypeChars
+    extends TypeMap
+{
+// protected properties
+    protected static $valType = 'char';
+    protected static $map
+                              = [
+            self::TYPE_ARRAY         => 'a',
+            self::TYPE_BOOL          => 'b',
+            self::TYPE_FLOAT         => 'd',
+            self::TYPE_INT           => 'i',
+            self::TYPE_NULL          => 'N',
+            self::TYPE_OBJECT        => 'O',
+            self::TYPE_STRING        => 's',
+            self::TYPE_STRINGENCODED => 'S',
+            self::TYPE_RECURSION     => 'r',
+            self::TYPE_RECURSIONREF  => 'R',
+            self::TYPE_CUSTOM        => 'C',
+        ];
+
 }

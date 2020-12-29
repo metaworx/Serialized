@@ -19,67 +19,125 @@
  * <http://www.gnu.org/licenses/> and please report back to the original
  * author.
  *
- * @author Tom Klingenberg <http://lastflood.com/>
+ * @author  Tom Klingenberg <http://lastflood.com/>
  * @version 0.2.0
  * @package Serialized
  */
 
-Namespace Serialized;
+namespace Serialized;
 
 /**
  * Serialize Session Parser
  */
-class SessionParser extends Parser {
-	public function __construct($session = '') {
-		$this->setSession($session);
-	}
-	public function setSession($session) {
-		$this->data = (string) $session;
-	}
-	private function parseVariableName($offset) {
-		$pattern = '([a-zA-Z0-9_\x7f-\xff]*)';
-		$len = $this->matchRegex($pattern, $offset);
-		if (!$len) {
-			throw new ParseException(sprintf('Invalid character sequence for variable name at offset %d.', $offset), $offset);
-		}
-		$value = substr($this->data, $offset, $len);
-		return array($value, $len);
-	}
-	public function parseVariable($offset) {
-		list($nameString, $nameLen) = $this->parseVariableName($offset);
-		$this->expectChar('|', $offset+$nameLen);
-		list($value, $len) = $this->parseValue($offset+$nameLen+1);
-		return array(
-			array(
-				array(
-					TypeNames::of(self::TYPE_VARNAME),
-					$nameString
-				),
-				$value
-			)
-			, $nameLen+1+$len
-		);
-	}
-	public function parseVariables($offset) {
-		if (!isset($this->data[$offset])) {
-			throw new ParseException(sprintf('Illegal offset "%s", length is #%d.', $offset, strlen($this->data)));
-		}
-		$sessionVariables = array();
-		$startOffset = $offset;
-		do {
-			list($value, $len) = $this->parseVariable($offset);
-			$sessionVariables[] = $value;
-			$offset += $len;
-		} while(isset($this->data[$offset]));
-		return array(array(TypeNames::of(self::TYPE_VARIABLES), $sessionVariables), $offset-$startOffset);
-	}
-	public function getParsed() {
-		if(isset($this->data[0])) {
-			list($value, $len) = $this->parseVariables(0);
-			$this->expectEof($len-1);
-		} else {
-			$value = array(TypeNames::of(self::TYPE_VARIABLES), array());
-		}
-		return $value;
-	}
+class SessionParser
+    extends Parser
+{
+    public function __construct($session = '')
+    {
+
+        $this->setSession($session);
+    }
+
+
+    public function getParsed()
+    {
+
+        if (isset($this->data[0]))
+        {
+            [$value, $len] = $this->parseVariables(0);
+            $this->expectEof($len - 1);
+        }
+        else
+        {
+            $value = [TypeNames::of(self::TYPE_VARIABLES), []];
+        }
+
+        return $value;
+    }
+
+
+    public function setSession($session)
+    {
+
+        $this->data = (string)$session;
+    }
+
+
+    /**
+     * @param $offset
+     *
+     * @return array
+     * @throws \Serialized\ParseException
+     */
+    public function parseVariable($offset)
+    {
+
+        [$nameString, $nameLen] = $this->parseVariableName($offset);
+        $this->expectChar('|', $offset + $nameLen);
+        [$value, $len] = $this->parseValue($offset + $nameLen + 1);
+
+        return [
+            [
+                [
+                    TypeNames::of(self::TYPE_VARNAME),
+                    $nameString,
+                ],
+                $value,
+            ]
+            ,
+            $nameLen + 1 + $len,
+        ];
+    }
+
+
+    /**
+     * @param $offset
+     *
+     * @return array
+     * @throws \Serialized\ParseException
+     */
+    private function parseVariableName($offset)
+    {
+
+        $pattern = '([a-zA-Z0-9_\x7f-\xff]*)';
+        $len     = $this->matchRegex($pattern, $offset);
+        if (!$len)
+        {
+            throw new ParseException(
+                sprintf('Invalid character sequence for variable name at offset %d.', $offset),
+                $offset
+            );
+        }
+        $value = substr($this->data, $offset, $len);
+
+        return [$value, $len];
+    }
+
+
+    /**
+     * @param $offset
+     *
+     * @return array
+     * @throws \Serialized\ParseException
+     */
+    public function parseVariables($offset)
+    {
+
+        if (!isset($this->data[$offset]))
+        {
+            throw new ParseException(sprintf('Illegal offset "%s", length is #%d.', $offset, strlen($this->data)));
+        }
+        $sessionVariables = [];
+        $startOffset      = $offset;
+        do
+        {
+            [$value, $len] = $this->parseVariable($offset);
+            $sessionVariables[] = $value;
+            $offset             += $len;
+        }
+        while (isset($this->data[$offset]));
+
+        return [[TypeNames::of(self::TYPE_VARIABLES), $sessionVariables], $offset - $startOffset];
+    }
+
 }

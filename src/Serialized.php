@@ -19,7 +19,7 @@
  * <http://www.gnu.org/licenses/> and please report back to the original
  * author.
  *
- * @author Tom Klingenberg <http://lastflood.com/>
+ * @author  Tom Klingenberg <http://lastflood.com/>
  * @version 0.2.5
  * @package Serialized
  */
@@ -27,100 +27,146 @@
 /* enable autoloading by default */
 return Serialized::registerAutoload();
 
+
 /**
  * Serialized autoloader
  *
- * PSR-0 compatbile autoloader in form of a collection of static class functions.
+ * PSR-0 compatible autoloader in form of a collection of static class functions.
  */
-class Serialized {
-	/**
-	 * get filename of a classname
-	 *
-	 * classname to filename mapping as in PSR-0
-	 *
-	 * @param string $className
-	 * @return string filename
-	 */
-	public static function fileNameOfClassName($className) {
-		$nameSpaceSeparator = '\\';
-		$classNameSeparator = '_';
-		$fileSuffix = '.php';
+class Serialized
+{
+    public static function autoloadCallback()
+    {
 
-		$lineup = explode($nameSpaceSeparator, $className);
-		if(!count($lineup) || !$lineup[0]) {
-			throw new \InvalidArgumentException(sprintf('%s is not a valid classname.', $className));
-		}
-		$nonNamespacedClassName = array_pop($lineup);
-		if(!$nonNamespacedClassName) {
-			throw new \InvalidArgumentException(sprintf('%s is not a valid classname.', $className));
-		}
-		$lineup[] = str_replace($classNameSeparator, DIRECTORY_SEPARATOR, $nonNamespacedClassName);
-		$fileName = implode(DIRECTORY_SEPARATOR, $lineup) . $fileSuffix;
-		return $fileName;
-	}
-	public static function autoloadCallback() {
-		return array(get_called_class(), 'loadClass');
-	}
-	public static function registerAutoload() {
-		spl_autoload_register(static::autoloadCallback());
-	}
-	public static function unregisterAutoload() {
-		spl_autoload_unregister(static::autoloadCallback());
-	}
-	/**
-	 * @return bool
-	 */
-	public static function autoloadRegistered() {
-		$autoloadCallback = self::autoloadCallback();
-		$autoloadFunctions = spl_autoload_functions();
-		$registered = in_array($autoloadCallback, $autoloadFunctions, true)
-			|| in_array(get_called_class().'::loadClass', $autoloadFunctions, true)
-			;
-		return $registered;
-	}
-	/**
-	 * @return int number of classes required()
-	 */
-	public static function loadLibrary() {
-		$classNames = array(
-			'Serialized\\ValueTypes',
-			'Serialized\\TypeMap',
-			'Serialized\\TypeNames',
-			'Serialized\\TypeChars',
-			'Serialized\\Dumper',
-			'Serialized\\Dumper\\Concrete',
-			'Serialized\\Dumper\\Serialized',
-			'Serialized\\Dumper\\Text',
-			'Serialized\\Dumper\\XML',
-			'Serialized\\Value',
-			'Serialized\\ParseException',
-			'Serialized\\Parser',
-			'Serialized\\SessionParser',
-		);
-		$resultArray = array_map(get_called_class().'::loadClass', $classNames);
-		$resultCountable = array_map('intval', $resultArray);
-		$resultCount = array_count_values($resultCountable);
-		return isset($resultCount[1]) ? $resultCount[1] : 0;
-	}
-	/**
-	 * @return bool did require(class)
-	 */
-	public static function loadClass($className) {
-		if (strpos($className, get_called_class().'\\') !== 0) {
-			return false;
-		}
-		$fileName = self::fileNameOfClassName($className);
-		if (self::undefined($className)) {
-			require($fileName);
-		}
-		return true;
-	}
-	/**
-	 * @return bool
-	 */
-	public static function undefined($classOrInterfaceName) {
-		$classExists = class_exists($classOrInterfaceName, false);
-		$interfaceExists = interface_exists($classOrInterfaceName, false);
-		return (bool) !($classExists || $interfaceExists);
-	}
+        return [get_called_class(), 'loadClass'];
+    }
+
+
+    /**
+     * @return bool
+     */
+    public static function autoloadRegistered()
+    {
+
+        $autoloadCallback  = self::autoloadCallback();
+        $autoloadFunctions = spl_autoload_functions();
+        $registered        = in_array($autoloadCallback, $autoloadFunctions, true)
+            || in_array(get_called_class() . '::loadClass', $autoloadFunctions, true);
+
+        return $registered;
+    }
+
+
+    /**
+     * get filename of a classname
+     *
+     * classname to filename mapping as in PSR-0
+     *
+     * @param  string  $className
+     *
+     * @return string filename
+     */
+    public static function fileNameOfClassName($className)
+    {
+
+        $nameSpaceSeparator = '\\';
+        $classNameSeparator = '_';
+        $fileSuffix         = '.php';
+
+        $lineup = explode($nameSpaceSeparator, $className);
+        if (!count($lineup) || !$lineup[0])
+        {
+            throw new InvalidArgumentException(sprintf('%s is not a valid classname.', $className));
+        }
+        $nonNamespacedClassName = array_pop($lineup);
+        if (!$nonNamespacedClassName)
+        {
+            throw new InvalidArgumentException(sprintf('%s is not a valid classname.', $className));
+        }
+        $lineup[] = str_replace($classNameSeparator, DIRECTORY_SEPARATOR, $nonNamespacedClassName);
+        $fileName = implode(DIRECTORY_SEPARATOR, $lineup) . $fileSuffix;
+
+        return $fileName;
+    }
+
+
+    /**
+     * @param $className
+     *
+     * @return bool did require(class)
+     */
+    public static function loadClass($className)
+    {
+
+        if (strpos($className, get_called_class() . '\\') !== 0)
+        {
+            return false;
+        }
+        $fileName = self::fileNameOfClassName($className);
+        if (self::undefined($className))
+        {
+            require($fileName);
+        }
+
+        return true;
+    }
+
+
+    /**
+     * @return int number of classes required()
+     */
+    public static function loadLibrary()
+    {
+
+        $classNames      = [
+            'Serialized\\ValueTypes',
+            'Serialized\\TypeMap',
+            'Serialized\\TypeNames',
+            'Serialized\\TypeChars',
+            'Serialized\\Dumper',
+            'Serialized\\Dumper\\Concrete',
+            'Serialized\\Dumper\\Serialized',
+            'Serialized\\Dumper\\Text',
+            'Serialized\\Dumper\\XML',
+            'Serialized\\Value',
+            'Serialized\\ParseException',
+            'Serialized\\Parser',
+            'Serialized\\SessionParser',
+        ];
+        $resultArray     = array_map(get_called_class() . '::loadClass', $classNames);
+        $resultCountable = array_map('intval', $resultArray);
+        $resultCount     = array_count_values($resultCountable);
+
+        return isset($resultCount[1])
+            ? $resultCount[1]
+            : 0;
+    }
+
+
+    public static function registerAutoload()
+    {
+
+        return spl_autoload_register(static::autoloadCallback());
+    }
+
+
+    /**
+     * @return bool
+     */
+    public static function undefined($classOrInterfaceName)
+    {
+
+        $classExists     = class_exists($classOrInterfaceName, false);
+        $interfaceExists = interface_exists($classOrInterfaceName, false);
+
+        return (bool)!($classExists || $interfaceExists);
+    }
+
+
+    public static function unregisterAutoload()
+    {
+
+        return spl_autoload_unregister(static::autoloadCallback());
+    }
+
 }

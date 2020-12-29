@@ -19,47 +19,72 @@
  * <http://www.gnu.org/licenses/> and please report back to the original
  * author.
  *
- * @author Tom Klingenberg <http://lastflood.com/>
+ * @author  Tom Klingenberg <http://lastflood.com/>
  * @version 0.2.5
  * @package Serialized
  */
 
-Namespace Serialized;
-Use \InvalidArgumentException;
+namespace Serialized;
+
+use InvalidArgumentException;
 
 /**
  * Chars of Value Types
  *
  * Concrete implementation of Value Type Chars (represented as string, more or less defined by PHP itself)
  */
-abstract class TypeMap implements ValueTypes {
-	protected static $valType = '[value type of map]';
-	protected static $map = array();
-	static public function has($type) {
-		return isset(static::$map[$type]);
-	}
-	/**
-	 * get [value] of type
-	 * @param int $type
-	 * @return string [value]
-	 * @throws InvalidArgumentException
-	 */
-	static public function of($type) {
-		if (!isset(static::$map[$type])) {
-			throw new InvalidArgumentException(sprintf('Illegal type "%s" - no %s for it.', $type, static::$valType));
-		}
-		return static::$map[$type];
-	}
-	/**
-	 * get type by value
-	 * @param string $value
-	 * @return int type
-	 */
-	static public function by($value) {
-		$map = array_flip(static::$map);
-		if (!isset($map[$value])) {
-			throw new InvalidArgumentException(sprintf('Illegal value "%s" - not a %s.', $value, static::$valType));
-		}
-		return $map[$value];
-	}
+abstract class TypeMap
+    implements ValueTypes
+{
+// protected properties
+    protected static $valType = '[value type of map]';
+    protected static $map     = [];
+
+
+    /**
+     * get type by value
+     *
+     * @param  string  $value
+     *
+     * @return int type
+     */
+    public static function by($value)
+    {
+
+        $map = array_flip(static::$map);
+        if (!isset($map[$value]))
+        {
+            throw new InvalidArgumentException(sprintf('Illegal value "%s" - not a %s.', $value, static::$valType));
+        }
+
+        return $map[$value];
+    }
+
+
+    public static function has($type)
+    {
+
+        return isset(static::$map[$type]);
+    }
+
+
+    /**
+     * get [value] of type
+     *
+     * @param  int  $type
+     *
+     * @return string [value]
+     * @throws InvalidArgumentException
+     */
+    public static function of($type)
+    {
+
+        if (!isset(static::$map[$type]))
+        {
+            throw new InvalidArgumentException(sprintf('Illegal type "%s" - no %s for it.', $type, static::$valType));
+        }
+
+        return static::$map[$type];
+    }
+
 }

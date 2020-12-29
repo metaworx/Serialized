@@ -19,15 +19,21 @@
  * <http://www.gnu.org/licenses/> and please report back to the original
  * author.
  *
- * @author Tom Klingenberg <http://lastflood.com/>
+ * @author  Tom Klingenberg <http://lastflood.com/>
  * @version 0.2.5
  * @package Serialized
  */
 
-Namespace Serialized\Dumper;
-Use Serialized\Dumper;
+namespace Serialized\Dumper;
 
-Interface Concrete {
-	public function setConfig(array $config);
-	public function dump(array $parsed, array $config=array());
+interface Concrete
+{
+    public function setConfig(array $config);
+
+
+    public function dump(
+        array $parsed,
+        array $config = []
+    );
+
 }

@@ -19,11 +19,16 @@
  * <http://www.gnu.org/licenses/> and please report back to the original
  * author.
  *
- * @author Tom Klingenberg <http://lastflood.com/>
+ * @author  Tom Klingenberg <http://lastflood.com/>
  * @version 0.2.5
  * @package Serialized
  */
 
-Namespace Serialized;
+namespace Serialized;
 
-class ParseException extends \Exception {}
+use Exception;
+
+class ParseException
+    extends Exception
+{
+}
