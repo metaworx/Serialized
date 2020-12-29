@@ -1,0 +1,28 @@
+{
+  "name": "metaworx/serialized",
+  "description": "PHP Library for Serialized Data",
+  "minimum-stability": "stable",
+  "license": "AGPL-3.0-or-later",
+  "version": "0.2.5",
+  "type": "library",
+  "authors": [
+    {
+      "name": "Tom Klingenberg"
+    }
+  ],
+  "require": {
+    "php": "~7.2"
+  },
+  "require-dev": {
+    "phpunir/phpunit": ">3.5.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Serialized\\": "src/Serialized"
+    }
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "classmap-authoritative": true
+  }
+}
