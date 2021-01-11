@@ -37,23 +37,6 @@ class SerializedTest extends \Serialized\TestCase
 	protected $object;
 
 	/**
-	 * Sets up the fixture, for example, opens a network connection.
-	 * This method is called before a test is executed.
-	 */
-	protected function setUp()
-	{
-		\Serialized::unregisterAutoload();
-	}
-
-	/**
-	 * Tears down the fixture, for example, closes a network connection.
-	 * This method is called after a test is executed.
-	 */
-	protected function tearDown()
-	{
-	}
-
-	/**
 	 * NOTE: if run in a setup with global auto-loaders, then it will fail.
 	 *
 	 * @runInSeparateProcess

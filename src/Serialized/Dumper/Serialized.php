@@ -83,8 +83,10 @@ class Serialized
      *
      * @param  array  $parsed
      */
-    protected function dumpConcrete(array $parsed)
-    {
+    protected function dumpConcrete(
+        $parsed,
+        bool $return = false
+    ) {
 
         $this->dumpAny($parsed);
     }

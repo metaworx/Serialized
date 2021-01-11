@@ -26,16 +26,14 @@
 
 Namespace Serialized;
 
-require_once(__DIR__.'/../src/Serialized.php');
-
-require_once('PHPUnit/Autoload.php');
+require_once(__DIR__.'/../vendor/autoload.php');
 
 require_once(__DIR__.'/Constraints.php');
 
 /**
  * abstract, base test-case class.
  */
-abstract class TestCase extends \PHPUnit_Framework_TestCase
+abstract class TestCase extends  \PHPUnit\Framework\TestCase
 {
 	/**
 	 * assert lint of a php file

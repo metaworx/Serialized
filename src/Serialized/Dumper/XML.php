@@ -50,6 +50,7 @@ class XML
         = [
             'declaration' => '<?xml version="1.0" encoding="us-ascii"?>',
             'doctype'     => '',
+            'dumpTo'      => STDOUT,
             'newline'     => "\n",
             'indent'      => '  ',
             'tags'        => [
@@ -159,7 +160,7 @@ class XML
      *
      * @param  array  $parsed  serialized array notation data.
      */
-    public function dumpConcrete(array $parsed)
+    protected function dumpConcrete($parsed)
     {
 
         $this->dumpAny($parsed);

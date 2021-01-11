@@ -26,6 +26,15 @@
 
 namespace Serialized;
 
+use Serialized\ObjectNotation\ArrayValue;
+use Serialized\ObjectNotation\BoolValue;
+use Serialized\ObjectNotation\CustomValue;
+use Serialized\ObjectNotation\FloatValue;
+use Serialized\ObjectNotation\IntValue;
+use Serialized\ObjectNotation\NullValue;
+use Serialized\ObjectNotation\ObjectValue;
+use Serialized\ObjectNotation\StringValue;
+
 /**
  * Chars of Value Types
  *
@@ -34,21 +43,25 @@ namespace Serialized;
 class TypeChars
     extends TypeMap
 {
-// protected properties
-    protected static $valType = 'char';
-    protected static $map
-                              = [
-            self::TYPE_ARRAY         => 'a',
-            self::TYPE_BOOL          => 'b',
-            self::TYPE_FLOAT         => 'd',
-            self::TYPE_INT           => 'i',
-            self::TYPE_NULL          => 'N',
-            self::TYPE_OBJECT        => 'O',
-            self::TYPE_STRING        => 's',
+
+    // constants
+
+    public const MAP
+        = [
+            ArrayValue::TYPE_CHAR    => ArrayValue::class,
+            BoolValue::TYPE_CHAR     => BoolValue::class,
+            FloatValue::TYPE_CHAR    => FloatValue::class,
+            IntValue::TYPE_CHAR      => IntValue::class,
+            NullValue::TYPE_CHAR     => NullValue::class,
+            ObjectValue::TYPE_CHAR   => ObjectValue::class,
+            StringValue::TYPE_CHAR   => StringValue::class,
             self::TYPE_STRINGENCODED => 'S',
             self::TYPE_RECURSION     => 'r',
             self::TYPE_RECURSIONREF  => 'R',
-            self::TYPE_CUSTOM        => 'C',
+            CustomValue::TYPE_CHAR   => CustomValue::class,
         ];
+
+    // protected properties
+    protected static $valType = 'char';
 
 }

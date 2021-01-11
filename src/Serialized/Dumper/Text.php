@@ -71,61 +71,61 @@ class Text
     private $printPoint = '*--';
 
 
-    private function dumpAny(array $parsed)
+    private function dumpAny( array $parsed )
     {
 
-        [$typeName, $valueValue] = $parsed;
-        $type        = TypeNames::by($typeName);
-        $valueString = $this->dumpValue($type, $valueValue);
-        $this->printInset(1);
-        printf(" %s%s\n", $typeName, $valueString);
-        $this->dumpSubValue($type, $valueValue, true);
+        [ $typeName, $valueValue ] = $parsed;
+        $type        = TypeNames::by( $typeName );
+        $valueString = $this->dumpValue( $type, $valueValue );
+        $this->printInset( 1 );
+        printf( " %s%s\n", $typeName, $valueString );
+        $this->dumpSubValue( $type, $valueValue, true );
     }
 
 
-    private function dumpArray($value)
+    private function dumpArray( $value )
     {
 
-        $count = count($value);
-        if (!$count--)
+        $count = count( $value );
+        if ( !$count-- )
         {
             return;
         }
 
-        foreach ($value as $index => $element)
+        foreach ( $value as $index => $element )
         {
             $isLast   = $index === $count;
-            $keyValue = $this->dumpArrayElement($element);
+            $keyValue = $this->dumpArrayElement( $element );
 
-            [$typeName, $valueValue] = $element[1];
-            $type        = TypeNames::by($typeName);
-            $valueString = $this->dumpValue($type, $valueValue);
+            [ $typeName, $valueValue ] = $element[ 1 ];
+            $type        = TypeNames::by( $typeName );
+            $valueString = $this->dumpValue( $type, $valueValue );
 
-            $this->printInset($isLast);
-            printf(" %s => %s%s\n", $keyValue, $typeName, $valueString);
-            $this->dumpSubValue($type, $valueValue, $isLast);
+            $this->printInset( $isLast );
+            printf( " %s => %s%s\n", $keyValue, $typeName, $valueString );
+            $this->dumpSubValue( $type, $valueValue, $isLast );
         }
     }
 
 
-    private function dumpArrayElement(array $element)
+    private function dumpArrayElement( array $element )
     {
 
-        list(list($keyType, $keyValue)) = $element;
-        if ($keyType === 'int')
+        list( list( $keyType, $keyValue ) ) = $element;
+        if ( $keyType === 'int' )
         {
-            $keyValue = (int)$keyValue;
+            $keyValue = (int) $keyValue;
         }
-        elseif ($keyType === 'string')
+        elseif ( $keyType === 'string' )
         {
             ;
         }
         else
         {
             // @codeCoverageIgnoreStart
-            throw new InvalidArgumentException(sprintf('Invalid type for array key #%d: "%s".', $index, $keyType));
+            throw new InvalidArgumentException( sprintf( 'Invalid type for array key #%d: "%s".', $index, $keyType ) );
         }    // @codeCoverageIgnoreEnd
-        $keyValue = sprintf('[%s]', $keyValue);
+        $keyValue = sprintf( '[%s]', $keyValue );
 
         return $keyValue;
     }
@@ -136,60 +136,77 @@ class Text
      *
      * @param  array  $parsed  serialized array notation data.
      */
-    public function dumpConcrete(array $parsed)
+    public function dumpConcrete( $parsed )
     {
 
-        $this->dumpAny($parsed);
+        if ( $captureOutput = ( $this->config[ 'dumpTo' ] !== STDOUT ) )
+        {
+            ob_start();
+        }
+
+        $this->dumpAny( $parsed );
+
+        if ( $captureOutput )
+        {
+            $output = ob_get_clean();
+
+            if ( $this->config[ 'dumpTo' ] === null )
+            {
+                return $output;
+            }
+
+            fwrite( $this->config[ 'dumpTo' ], $output );
+        }
     }
 
 
-    private function dumpCustom($value)
+    private function dumpCustom( $value )
     {
 
         $isLast = true;
-        [$typeName, $valueValue] = $value[1];
-        $type        = TypeNames::by($typeName);
-        $valueString = $this->dumpValue($type, $valueValue);
-        $this->printInset($isLast);
-        printf(" %s%s\n", $typeName, $valueString);
+        [ $typeName, $valueValue ] = $value[ 1 ];
+        $type        = TypeNames::by( $typeName );
+        $valueString = $this->dumpValue( $type, $valueValue );
+        $this->printInset( $isLast );
+        printf( " %s%s\n", $typeName, $valueString );
     }
 
 
-    private function dumpObject($value)
+    private function dumpObject( $value )
     {
 
-        $classname = $value[0][1];
-        $members   = $value[1][1];
-        $count     = count($members);
-        if (!$count--)
+        $classname = $value[ 0 ][ 1 ];
+        $members   = $value[ 1 ][ 1 ];
+        $count     = count( $members );
+        if ( !$count-- )
         {
             return;
         }
 
-        foreach ($members as $index => $element)
+        foreach ( $members as $index => $element )
         {
             $isLast     = $index === $count;
-            $memberName = $this->dumpObjectMember($element);
-            [, $valueArray] = $element;
+            $memberName = $this->dumpObjectMember( $element );
+            [ , $valueArray ] = $element;
 
-            [$typeName, $valueValue] = $valueArray;
-            $type        = TypeNames::by($typeName);
-            $valueString = $this->dumpValue($type, $valueValue);
+            [ $typeName, $valueValue ] = $valueArray;
+            $type        = TypeNames::by( $typeName );
+            $valueString = $this->dumpValue( $type, $valueValue );
 
-            $this->printInset($isLast);
-            printf(" %s -> %s%s\n", $memberName, $typeName, $valueString);
-            $this->dumpSubValue($type, $valueValue, $isLast);
+            $this->printInset( $isLast );
+            printf( " %s -> %s%s\n", $memberName, $typeName, $valueString );
+            $this->dumpSubValue( $type, $valueValue, $isLast );
         }
     }
 
 
-    private function dumpObjectMember(array $member)
+    private function dumpObjectMember( array $member )
     {
 
-        list(list(, $memberName)) = $member;
-        [$name, $class, $access] = $this->parseMemberName($memberName);
+        list( list( , $memberName ) ) = $member;
+        [ $name, $class, $access ] = $this->parseMemberName( $memberName );
         $memberAccess = '';
-        switch ($access)
+        switch ( $access )
         {
         case 1:
             $memberAccess = ' (protected)';
@@ -198,7 +215,7 @@ class Text
             $memberAccess = ' (' . $class . ':private)';
         }
 
-        return sprintf('[%s]%s', $name, $memberAccess);
+        return sprintf( '[%s]%s', $name, $memberAccess );
     }
 
 
@@ -214,16 +231,16 @@ class Text
             self::TYPE_VARIABLES => 'dumpVariables',
             self::TYPE_CUSTOM    => 'dumpCustom',
         ];
-        if (false === array_key_exists($type, $subDumpMap))
+        if ( false === array_key_exists( $type, $subDumpMap ) )
         {
             return;
         }
 
         $this->statePush();
-        $this->state->inset .= $this->printInsetStarts[(int)$isLast] . $this->printInsetSpace;
+        $this->state->inset .= $this->printInsetStarts[ (int) $isLast ] . $this->printInsetSpace;
 
-        $method = $subDumpMap[$type];
-        $this->$method($value);
+        $method = $subDumpMap[ $type ];
+        $this->$method( $value );
         $this->statePop();
     }
 
@@ -233,82 +250,84 @@ class Text
         $value
     ) {
 
-        switch ($type)
+        switch ( $type )
         {
         case self::TYPE_ARRAY:
         case self::TYPE_MEMBERS:
             return sprintf(
                 '(%d)%s',
-                count($value),
-                count($value)
+                count( $value ),
+                count( $value )
                     ? ':'
                     : '.'
             );
         case self::TYPE_VARIABLES:
             return sprintf(
                 ' (%d)%s',
-                count($value),
-                count($value)
+                count( $value ),
+                count( $value )
                     ? ':'
                     : '.'
             );
         case self::TYPE_STRING:
         case self::TYPE_CUSTOMDATA:
-            return sprintf('(%d): "%s"', strlen($value), $this->phpEncodeString($value));
+            return sprintf( '(%d): "%s"', strlen( $value ), $this->phpEncodeString( $value ) );
         case self::TYPE_INT:
         case self::TYPE_FLOAT:
             return ': ' . $value;
         case self::TYPE_OBJECT:
-            $count = count($value[1][1]);
+            $count = count( $value[ 1 ][ 1 ] );
 
             return sprintf(
                 '(%s) (%d)%s',
-                $value[0][1],
+                $value[ 0 ][ 1 ],
                 $count,
                 $count
                     ? ':'
                     : '.'
             );
         case self::TYPE_CUSTOM:
-            return sprintf('(%s):', $value[0][1]);
+            return sprintf( '(%s):', $value[ 0 ][ 1 ] );
         case self::TYPE_NULL:
             return ': NULL';
         case self::TYPE_BOOL:
-            return ': ' . ($value
+            return ': ' . ( $value
                     ? 'TRUE'
-                    : 'FALSE');
+                    : 'FALSE' );
         case self::TYPE_RECURSION:
             return ': ' . $value;
         case self::TYPE_RECURSIONREF:
             return ': &' . $value;
             // @codeCoverageIgnoreStart
         default:
-            throw new InvalidArgumentException(sprintf('Type #%s (%s) not handled.', $type, TypeNames::of($type)));
+            throw new InvalidArgumentException(
+                sprintf( 'Type #%s (%s) not handled.', $type, TypeNames::of( $type ) )
+            );
         }
     }
 
 
-    private function dumpVariables($value)
+    private function dumpVariables( $value )
     {
 
-        $count = count($value);
-        if (!$count--)
+        $count = count( $value );
+        if ( !$count-- )
         {
             return;
         }
 
-        foreach ($value as $index => $element)
+        foreach ( $value as $index => $element )
         {
             $isLast   = $index === $count;
-            $keyValue = sprintf('$%s', $element[0][1]);
+            $keyValue = sprintf( '$%s', $element[ 0 ][ 1 ] );
 
-            [$typeName, $valueValue] = $element[1];
-            $type        = TypeNames::by($typeName);
-            $valueString = $this->dumpValue($type, $valueValue);
+            [ $typeName, $valueValue ] = $element[ 1 ];
+            $type        = TypeNames::by( $typeName );
+            $valueString = $this->dumpValue( $type, $valueValue );
 
-            $this->printInset($isLast);
-            printf(" %s = %s%s\n", $keyValue, $typeName, $valueString);
-            $this->dumpSubValue($type, $valueValue, $isLast);
+            $this->printInset( $isLast );
+            printf( " %s = %s%s\n", $keyValue, $typeName, $valueString );
+            $this->dumpSubValue( $type, $valueValue, $isLast );
         }
     }
 
@@ -323,25 +342,25 @@ class Text
      *
      * @return string encoded
      */
-    private function phpEncodeString($string)
+    private function phpEncodeString( $string )
     {
 
-        static $seq = [0x09 => 't', 0x0A => 'n', 0x0B => 'v', 0x0C => 'f', 0x0D => 'r'];
+        static $seq = [ 0x09 => 't', 0x0A => 'n', 0x0B => 'v', 0x0C => 'f', 0x0D => 'r' ];
         for (
             $r = '',
-            $l = strlen($string),
+            $l = strlen( $string ),
             $i = 0
         ;
             $i < $l
         ;
-            $c = $string[$i++],
-            $o = ord($c),
-            ($f = 0x08 < $o && $o < 0x0E) && $c = $seq[$o],
-            ($b = $f || (0x1F < $o && $o < 0x7F)) && ($f || 0x22 === $o || 0x24 === $o || 0x5C === $o) && $c
+            $c = $string[ $i++ ],
+            $o = ord( $c ),
+            ( $f = 0x08 < $o && $o < 0x0E ) && $c = $seq[ $o ],
+            ( $b = $f || ( 0x1F < $o && $o < 0x7F ) ) && ( $f || 0x22 === $o || 0x24 === $o || 0x5C === $o ) && $c
                 = '\\' . $c,
             $r .= $b
                 ? $c
-                : '\x' . strtoupper(substr('0' . dechex($o), -2))
+                : '\x' . strtoupper( substr( '0' . dechex( $o ), -2 ) )
         )
         {
             ;
@@ -351,12 +370,12 @@ class Text
     }
 
 
-    private function printInset($isLast)
+    private function printInset( $isLast )
     {
 
-        $printPoint    = $this->printPoint;
-        $printPoint[0] = $this->printPointStarts[(int)$isLast];
-        printf("%s%s", $this->state->inset, $printPoint);
+        $printPoint      = $this->printPoint;
+        $printPoint[ 0 ] = $this->printPointStarts[ (int) $isLast ];
+        printf( "%s%s", $this->state->inset, $printPoint );
     }
 
 }

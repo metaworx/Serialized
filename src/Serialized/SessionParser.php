@@ -26,40 +26,45 @@
 
 namespace Serialized;
 
+use Serialized\ObjectNotation\Variables;
+
 /**
  * Serialize Session Parser
  */
 class SessionParser
     extends Parser
 {
-    public function __construct($session = '')
-    {
-
-        $this->setSession($session);
-    }
-
-
-    public function getParsed()
-    {
-
-        if (isset($this->data[0]))
-        {
-            [$value, $len] = $this->parseVariables(0);
-            $this->expectEof($len - 1);
-        }
-        else
-        {
-            $value = [TypeNames::of(self::TYPE_VARIABLES), []];
-        }
-
-        return $value;
-    }
-
 
     public function setSession($session)
     {
 
-        $this->data = (string)$session;
+        $this->setSerialized($session);
+    }
+
+
+    /**
+     * parse for a serialized value at offset
+     *
+     * @param  \Serialized\Dumper|null  $returnFormat
+     *
+     * @return array array notation of serialized value
+     */
+    public function parseValue()
+    {
+
+        if ($this->pos === 0)
+        {
+            $class = $this->dumper::getTypeClass(Variables::TYPE_NAME);
+            $value = new $class($this);
+        }
+        else
+        {
+            $class = $this->lookupVarType();
+
+            $value = new $class($this);
+        }
+
+        return $value;
     }
 
 
@@ -91,12 +96,12 @@ class SessionParser
 
 
     /**
-     * @param $offset
+     * @param  int  $offset
      *
      * @return array
      * @throws \Serialized\ParseException
      */
-    private function parseVariableName($offset)
+    private function parseVariableName(int $offset): array
     {
 
         $pattern = '([a-zA-Z0-9_\x7f-\xff]*)';
@@ -117,27 +122,14 @@ class SessionParser
     /**
      * @param $offset
      *
-     * @return array
+     * @return Variables
      * @throws \Serialized\ParseException
      */
-    public function parseVariables($offset)
+    public function parseVariables()
     {
 
-        if (!isset($this->data[$offset]))
-        {
-            throw new ParseException(sprintf('Illegal offset "%s", length is #%d.', $offset, strlen($this->data)));
-        }
-        $sessionVariables = [];
-        $startOffset      = $offset;
-        do
-        {
-            [$value, $len] = $this->parseVariable($offset);
-            $sessionVariables[] = $value;
-            $offset             += $len;
-        }
-        while (isset($this->data[$offset]));
-
-        return [[TypeNames::of(self::TYPE_VARIABLES), $sessionVariables], $offset - $startOffset];
+        return new Variables($this);
     }
 
 }
+

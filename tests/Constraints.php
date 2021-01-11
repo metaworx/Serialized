@@ -26,6 +26,8 @@
 
 Namespace Serialized;
 
+use PHPUnit\Framework\Constraint\Constraint;
+
 /**
  * ConstraintLastError
  *
@@ -38,7 +40,7 @@ Namespace Serialized;
  *   $this->assertLastError('Error Message', 'basenameOfFile.php');
  *
  */
-class ConstraintLastError extends \PHPUnit_Framework_Constraint {
+class ConstraintLastError extends Constraint {
     private $file;
     private $error;
     public function __construct($error) {
@@ -51,7 +53,7 @@ class ConstraintLastError extends \PHPUnit_Framework_Constraint {
      * @param string $file Value or object to evaluate.
      * @return bool
      */
-    public function evaluate($file)
+    public function matches($file): bool
     {
         $this->file = $file;
         $error = $this->error;
@@ -70,7 +72,7 @@ class ConstraintLastError extends \PHPUnit_Framework_Constraint {
      * @param string  $description
      * @param boolean $not
      */
-    protected function customFailureDescription($other, $description, $not)
+    protected function failureDescription($other): string
     {
         return sprintf('Failed asserting that the last error %s', basename($other), $not ? '' : 'no ', implode("\n  - ", $this->lines));
     }
@@ -81,7 +83,7 @@ class ConstraintLastError extends \PHPUnit_Framework_Constraint {
      *
      * @return string
      */
-    public function toString()
+    public function toString(): string
     {
         return sprintf('was %s in file %s.', $this->error, $this->file);
     }
@@ -102,7 +104,7 @@ class ConstraintLastError extends \PHPUnit_Framework_Constraint {
  *   require $fileName;
  *
  */
-class ConstraintLint extends \PHPUnit_Framework_Constraint {
+class ConstraintLint extends Constraint {
     private $lines;
     private function lintFile($fileName) {
         $return = 0;
@@ -123,7 +125,7 @@ class ConstraintLint extends \PHPUnit_Framework_Constraint {
      * @param string $fileName Value or object to evaluate.
      * @return bool
      */
-    public function evaluate($fileName)
+    public function matches($fileName): bool
     {
         $lint = $this->lintFile($fileName);
         return $lint != 1;
@@ -134,7 +136,7 @@ class ConstraintLint extends \PHPUnit_Framework_Constraint {
      * @param string  $description
      * @param boolean $not
      */
-    protected function customFailureDescription($other, $description, $not)
+    protected function failureDescription($other): string
     {
         return sprintf('Assertion that the file %s has %slints failed: %s', basename($other), $not ? '' : 'no ', implode("\n  - ", $this->lines));
     }
@@ -145,7 +147,7 @@ class ConstraintLint extends \PHPUnit_Framework_Constraint {
      *
      * @return string
      */
-    public function toString()
+    public function toString(): string
     {
         return 'can lint';
     }
@@ -175,7 +177,7 @@ class ConstraintLint extends \PHPUnit_Framework_Constraint {
  *   $this->assertXmlStringValidatesDtdUri($xml, $dtd);
  *
  */
-class ConstraintXmlStringValidatesDtdUri extends \PHPUnit_Framework_Constraint
+class ConstraintXmlStringValidatesDtdUri extends Constraint
 {
     /**
      * @var string XML
@@ -217,7 +219,7 @@ class ConstraintXmlStringValidatesDtdUri extends \PHPUnit_Framework_Constraint
      * @param string $dtd DTD URI
      * @return bool
      */
-    private function validateDTD($xml, $dtd)
+    private function validateDTD($xml, $dtd): bool
     {
         $importDoc = new \DOMDocument();
         $importDoc->loadXML($xml);
@@ -249,7 +251,7 @@ class ConstraintXmlStringValidatesDtdUri extends \PHPUnit_Framework_Constraint
      * @param mixed $other Value or object to evaluate.
      * @return bool
      */
-    public function evaluate($dtd)
+    public function matches($dtd): bool
     {
         return $this->validateDTD($this->xml, $dtd);
     }
@@ -259,11 +261,11 @@ class ConstraintXmlStringValidatesDtdUri extends \PHPUnit_Framework_Constraint
      * @param string  $description
      * @param boolean $not
      */
-    protected function customFailureDescription($dtd, $description, $not)
+    protected function failureDescription($dtd): string
     {
         $dtdLabel = $dtd;
         if (strlen($dtdLabel)>40) {
-            $dtdLabel = substr($dtdlabel, 0, 37). '...';
+            $dtdLabel = substr($dtdLabel, 0, 37). '...';
         }
         return sprintf('Assertion that XML %s DTD "%s" has failed (%d errors).', $not ? 'does not validate' : 'validates', $dtdLabel, count($this->errors));
     }
@@ -273,7 +275,7 @@ class ConstraintXmlStringValidatesDtdUri extends \PHPUnit_Framework_Constraint
      *
      * @return string
      */
-    public function toString()
+    public function toString(): string
     {
         return 'validates DTD';
     }

@@ -30,22 +30,6 @@ require_once(__DIR__.'/../TestCase.php');
 
 class ParserTest extends TestCase
 {
-	/**
-	 * Sets up the fixture, for example, opens a network connection.
-	 * This method is called before a test is executed.
-	 */
-	protected function setUp()
-	{
-	}
-
-	/**
-	 * Tears down the fixture, for example, closes a network connection.
-	 * This method is called after a test is executed.
-	 */
-	protected function tearDown()
-	{
-	}
-
 	private function parseArray(array $array){
 		$result = array();
 		foreach($array as $key => $value) {
@@ -380,7 +364,7 @@ class ParserTest extends TestCase
 		$expected = 'string';
 		$serialized = serialize($test);
 		$object = new Parser($serialized);
-		$actual = $object->getType();
+		$actual = $object->getTypeName();
 		$this->assertEquals($expected, $actual);
 	}
 	public function testDumpEmpty() {

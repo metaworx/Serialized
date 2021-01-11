@@ -28,6 +28,12 @@ namespace Serialized;
 
 use Exception;
 use InvalidArgumentException;
+use Serialized\Dumper\ArrayNotation;
+use Serialized\Dumper\Concrete;
+use Serialized\Dumper\ObjectNotation;
+use Serialized\Dumper\Serialized;
+use Serialized\Dumper\Text;
+use Serialized\Dumper\XML;
 use stdClass;
 
 /**
@@ -38,13 +44,22 @@ use stdClass;
 abstract class Dumper
     implements ValueTypes
 {
-// protected properties
+
+    // constants
+
+    public const MAP = [];
+
+    // protected properties
+
     /**
      * configuration local store
      *
      * @var array
      */
-    protected $config = [];
+    protected $config
+        = [
+            'dumpTo' => STDOUT,
+        ];
 
     /**
      * dumper state
@@ -52,7 +67,9 @@ abstract class Dumper
      * @var stdClass
      */
     protected $state;
-// private properties
+
+    // private properties
+
     /**
      * stack of states
      *
@@ -80,7 +97,7 @@ abstract class Dumper
     public function getDump(
         array $parsed,
         array $config = []
-    ) {
+    ): string {
 
         if (count($parsed) != 2)
         {
@@ -104,7 +121,7 @@ abstract class Dumper
     }
 
 
-    public function setConfig(array $config)
+    public function setConfig(array $config): void
     {
 
         $this->config = $this->configMergeDeep($this->config, $config);
@@ -129,7 +146,7 @@ abstract class Dumper
         array $source,
         array $add,
         $noticeUndefined = true
-    ) {
+    ): array {
 
         static $base = '';
         foreach ($add as $key => $value)
@@ -185,26 +202,41 @@ abstract class Dumper
     /**
      * dump array notation
      *
-     * @param  array  $parsed  serialized array notation data to be dumped.
-     * @param  array  $config  (optional) dumper configuration
+     * @param  array|\Serialized\Value  $parsed  serialized array notation data to be dumped.
+     * @param  array                    $config  (optional) dumper configuration
      */
     final public function dump(
-        array $parsed,
+        $parsed,
         array $config = []
     ) {
 
-        if (count($parsed) !== 2)
+        if (!$parsed instanceof Value && !is_array($parsed))
+        {
+            throw new InvalidArgumentException(
+                sprintf(
+                    'Parsed is expected to be a %s or an an array of two values (ArrayNotation); %s given.',
+                    Value::class,
+                    ($type = gettype($parsed)) === 'object'
+                        ? get_class($parsed)
+                        : $type
+                )
+            );
+        }
+
+        if (is_array($parsed) && count($parsed) !== 2)
         {
             throw new InvalidArgumentException(
                 sprintf('Parsed is expected to be an array of two values, array has %d values.', count($parsed))
             );
         }
+
         $config && $this->setConfig($config);
-        $this->dumpConcrete($parsed);
+
+        return $this->dumpConcrete($parsed);
     }
 
 
-    abstract protected function dumpConcrete(array $parsed);
+    abstract protected function dumpConcrete($parsed);
 
 
     /**
@@ -274,31 +306,83 @@ abstract class Dumper
 
 
     /**
-     * @param  null   $type
-     * @param  array  $config
+     * @param  \Serialized\Dumper\Concrete|string|null  $type  Either a full-qualified class name of a Dumper class
+     *                                                         implementing the Concrete interface, or on of the
+     *                                                         predefined Dumpers [text|xml|serialized|array|object].
+     *                                                         Defaults to 'text'
+     * @param  array                                    $config
      *
      * @return \Serialized\Dumper\Concrete
      */
     public static function factory(
         $type = null,
         array $config = []
-    ) {
+    ): Dumper\Concrete {
 
-        if (!is_string($type) && null !== $type)
+        if (!is_string($type) && null !== $type && !$type instanceof Dumper)
         {
             throw new InvalidArgumentException(sprintf('Type expected string, %s given (%s).', gettype($type), $type));
         }
-        null === $type && $type = 'text';
-        $dumperClass = ucfirst(strtolower($type));
-        if ($dumperClass === 'Xml')
+
+        if ($type instanceof Dumper)
         {
-            $dumperClass = 'XML';
-        } // Dumper\XML is all caps
-        $class  = sprintf('%s\Dumper\%s', __NAMESPACE__, $dumperClass);
-        $dumper = new $class();
+            $dumper = $type;
+        }
+        else
+        {
+            switch (strtolower($type ?? 'text'))
+            {
+            case 'text':
+                $class = Text::class;
+                break;
+
+            case 'xml':
+                $class = XML::class;
+                break;
+
+            case 'serialized':
+                $class = Serialized::class;
+                break;
+
+            case 'array':
+                $class = ArrayNotation::class;
+                break;
+
+            case 'object':
+                $class = ObjectNotation::class;
+                break;
+
+            default:
+                if (!class_exists($type))
+                {
+                    throw new InvalidArgumentException(
+                        sprintf('Type expected to be a valid class name, %s given.', $type)
+                    );
+                }
+
+                if (!is_subclass_of($type, Concrete::class))
+                {
+                    throw new InvalidArgumentException(
+                        sprintf('Type expected to be a class implementing %s, %s given.', Concrete::class, $type)
+                    );
+                }
+
+                $class = $type;
+            }
+
+            $dumper = new $class();
+        }
+
         $config && $dumper->setConfig($config);
 
         return $dumper;
+    }
+
+
+    public static function getTypeClass($type): ?string
+    {
+
+        return static::MAP[$type] ?? null;
     }
 
 }

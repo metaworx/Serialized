@@ -1,4 +1,6 @@
 <?php
+/** @noinspection UnknownInspectionInspection */
+
 /**
  * Serialized - PHP Library for Serialized Data
  *
@@ -26,6 +28,18 @@
 
 namespace Serialized;
 
+use Serialized\ArrayNotation\IntValue;
+use Serialized\Dumper\ArrayNotation;
+use Serialized\Dumper\Concrete;
+use Serialized\Dumper\ObjectArrayNotation;
+use Serialized\Dumper\ObjectNotation;
+use Serialized\ObjectNotation\AbstractValue;
+use Serialized\ObjectNotation\ArrayValue;
+use Serialized\ObjectNotation\BoolValue;
+use Serialized\ObjectNotation\FloatValue;
+use Serialized\ObjectNotation\NullValue;
+use Serialized\ObjectNotation\ObjectValue;
+use Serialized\ObjectNotation\StringValue;
 use UnexpectedValueException;
 
 /**
@@ -34,17 +48,79 @@ use UnexpectedValueException;
 class Parser
     implements Value, ValueTypes
 {
-// protected properties
+
+    // constants
+    public const DEFAULT_RETURN_FORMAT = ArrayNotation::class;
+
+    // protected properties
+
     /**
-     * @var string serialized
+     * @var resource serialized
      */
-    protected $data = '';
+    protected $data;
+
+    protected $buffer   = [];
+
+    protected $elements = [ null => [] ];
+
+    /** @var \Serialized\Dumper */
+    protected $dumper;
+
+    protected $pos = 0;
 
 
-    public function __construct($serialized = 'N;')
-    {
+    public function __construct(
+        $serialized = 'N;',
+        ?string $returnFormat = self::DEFAULT_RETURN_FORMAT
+    ) {
 
-        $this->setSerialized($serialized);
+        $this->setDumper( $returnFormat );
+
+        if ( is_resource( $serialized ) || AbstractValue::isLookingSerialized( $serialized ) )
+        {
+            $this->setSerialized( $serialized );
+
+            return;
+        }
+
+        $this->loadValue( $serialized );
+    }
+
+
+    protected function getBuffer(
+        int $length = 1,
+        int $offset = 0
+    ): ?string {
+
+        if ( $length < 0 )
+        {
+            throw new \InvalidArgumentException(
+                sprintf( 'Argument 1 ($length) to %s cannot be negative!', __METHOD__ )
+            );
+        }
+
+        if ( $offset < 0 )
+        {
+            throw new \InvalidArgumentException(
+                sprintf( 'Argument 2 ($offset) to %s cannot be negative!', __METHOD__ )
+            );
+        }
+
+        if ( ( $count = count( $this->buffer ) ) < $length + $offset && !$this->isEof( false ) )
+        {
+            $buffer = $this->readFromStream( $length - $count + $offset );
+
+            array_splice( $this->buffer, $count, 0, str_split( $buffer ) );
+        }
+
+        $return = array_slice( $this->buffer, $offset, $length );
+
+        if ( count( $return ) < $length )
+        {
+            return null;
+        }
+
+        return implode( '', $return );
     }
 
 
@@ -56,34 +132,128 @@ class Parser
      *
      * @return string dump
      * @throws \Serialized\ParseException
+     * @throws \Exception
      */
     public function getDump(
         $type = null,
         array $config = []
-    ) {
+    ): string {
 
         $parsed = $this->getParsed();
-        $dumper = Dumper::factory($type, $config);
+        $dumper = Dumper::factory( $type, $config );
 
-        return $dumper->getDump($parsed);
+        return $dumper->getDump( $parsed );
     }
 
 
     /**
-     * @return array|mixed
-     * @throws \Serialized\ParseException
+     * @return \Serialized\Dumper
      */
-    public function getParsed()
+    public function getDumper(): Dumper
     {
 
-        [$value, $len] = $this->parseValue(0);
-        $this->expectEof($len - 1);
+        return $this->dumper;
+    }
+
+
+    /**
+     * @param  \Serialized\Dumper|string|null  $dumper
+     *
+     * @return Parser
+     */
+    public function setDumper( $dumper ): Parser
+    {
+
+        if ( $dumper instanceof Concrete )
+        {
+            $this->dumper = $dumper;
+
+            return $this;
+        }
+
+        if ( $dumper === null )
+        {
+            $dumper = ObjectNotation::class;
+        }
+
+        if ( is_string( $dumper ) )
+        {
+            if ( $this->dumper !== null && $dumper === get_class( $this->dumper ) )
+            {
+                return $this;
+            }
+
+            $this->dumper = Dumper::factory( $dumper );
+
+            return $this;
+        }
+
+        $type = gettype( $dumper );
+
+        if ( 'object' === $type )
+        {
+            $type = get_class( $dumper );
+        }
+
+        throw new \InvalidArgumentException(
+            sprintf(
+                'Invalid argument 1 ($dumper) for %s: %s given',
+                __METHOD__,
+                $type
+            )
+        );
+    }
+
+
+    public function getOriginalPos(): ?int
+    {
+
+        return null;
+    }
+
+
+    /**
+     * @param  \Serialized\Dumper|null  $returnFormat
+     *
+     * @return \Serialized\Value|array|mixed
+     * @throws \Serialized\ParseException
+     */
+    public function getParsed( ?string $returnFormat = self::DEFAULT_RETURN_FORMAT )
+    {
+
+        $this->setDumper( $returnFormat );
+
+        if ( $this->data instanceof Value )
+        {
+            $value = $this->data;
+        }
+        else
+        {
+
+            $value = $this->parseValue();
+
+            $this->expectEof();
+
+            $this->data = $value;
+        }
+
+        $value = $this->dumper->dump( $value, [ 'dumpTo' => null ] );
 
         return $value;
     }
 
 
-    public function getSerialized()
+    /**
+     * @return int
+     */
+    public function getPos(): int
+    {
+
+        return $this->pos;
+    }
+
+
+    public function getSerialized(): string
     {
 
         return $this->data;
@@ -94,19 +264,90 @@ class Parser
      * @return string datatype
      * @throws \Serialized\ParseException
      */
-    public function getType()
+    public function getTypeName(): string
     {
 
         $parsed = $this->getParsed();
 
-        return $parsed[0];
+        return $parsed[ 0 ];
     }
 
 
-    public function setSerialized($serialized)
+    public function isEof( $buffered = true ): bool
     {
 
-        $this->data = (string)$serialized;
+        if ( $buffered && count( $this->buffer ) !== 0 )
+        {
+            return false;
+        }
+
+        if ( feof( $this->data ) )
+        {
+            return true;
+        }
+
+        if ( ( $s = stream_get_meta_data( $this->data ) ) && array_key_exists( 'eof', $s ) && ( $s[ 'eof' ] ?? false ) )
+        {
+            return true;
+        }
+
+        $buffer = null;
+
+        if ( $buffered && '' !== ( $buffer = fread( $this->data, 1 ) ) )
+        {
+            $this->buffer[] = $buffer;
+        }
+
+        return $buffer === '';
+    }
+
+
+    /**
+     * @param  string|resource  $serialized
+     *
+     * @return $this
+     */
+    public function setSerialized( $serialized ): self
+    {
+
+        if ( is_string( $serialized ) )
+        {
+            /** @noinspection FopenBinaryUnsafeUsageInspection */
+            $this->data = fopen( 'php://temp', 'r+' );
+            fwrite( $this->data, $serialized );
+            rewind( $this->data );
+            $this->pos = 0;
+        }
+        elseif ( !is_resource( $serialized ) )
+        {
+            throw new \InvalidArgumentException( "Data must be String or Resource" );
+        }
+        elseif ( !in_array( stream_get_meta_data( $serialized )[ 'mode' ], [ 'r', 'r+', 'w+' ], true ) )
+        {
+            throw new \InvalidArgumentException( "Resource must be readable" );
+        }
+        else
+        {
+            $this->data = $serialized;
+        };
+
+        return $this;
+    }
+
+
+    public function addElement( Value $value ): int
+    {
+
+        if ( null !== ( $pos = $value->getOriginalPos() ) )
+        {
+            $this->elements[ $pos ] = $value;
+
+            return $pos;
+        }
+
+        $this->elements[ null ][] = $value;
+
+        return -count( $this->elements[ null ] );
     }
 
 
@@ -124,8 +365,9 @@ class Parser
     ) {
 
         $parsed = $this->getParsed();
-        $dumper = Dumper::factory($type, $config);
-        $dumper->dump($parsed);
+        $dumper = Dumper::factory( $type, $config );
+
+        return $dumper->dump( $parsed );
     }
 
 
@@ -138,21 +380,21 @@ class Parser
     protected function expectChar(
         $charExpected,
         $offset
-    ) {
+    ): void {
 
-        if (!isset($this->data[$offset]))
+        if ( !isset( $this->data[ $offset ] ) )
         {
             throw new ParseException(
                 sprintf(
                     'Unexpected EOF, expected Expected "%s". At offset #%d ("%s").',
                     $charExpected,
                     $offset,
-                    $this->extract($offset)
+                    $this->extract( $offset )
                 )
             );
         }
-        $char = $this->data[$offset];
-        if ($charExpected !== $char)
+        $char = $this->data[ $offset ];
+        if ( $charExpected !== $char )
         {
             throw new ParseException(
                 sprintf(
@@ -160,7 +402,7 @@ class Parser
                     $char,
                     $charExpected,
                     $offset,
-                    $this->extract($offset)
+                    $this->extract( $offset )
                 )
             );
         }
@@ -172,85 +414,176 @@ class Parser
      *
      * @throws \Serialized\ParseException
      */
-    protected function expectEof($offset)
+    protected function expectEof( $offset = 0 ): void
     {
 
-        $len = strlen($this->data);
-        $end = ($offset + 1) === $len;
-        if (!$end)
+        $len = 0;
+
+        if ( $offset )
+        {
+            $len = strlen( $this->read( $offset, false ) );
+        }
+
+        if ( $len !== $offset || !$this->isEof() )
         {
             throw new ParseException(
-                sprintf('Not EOF after offset #%d ("%s"). Length is %d.', $offset, $this->extract($offset), $len)
+                sprintf( 'Not EOF after offset #%d ("%s"). Length is %d.', $offset, $this->read( 500, false ), $len )
             );
         }
     }
 
 
-    private function extract($offset)
+    private function extract( $offset ): string
     {
 
         $delta  = 12;
-        $start  = max(0, $offset - $delta);
+        $start  = max( 0, $offset - $delta );
         $before = $offset - $start;
-        $end    = min(strlen($this->data), $offset + $delta + 1);
+        $end    = min( strlen( $this->data ), $offset + $delta + 1 );
         $after  = $end - $offset;
         $end    = $end - $after + 1;
         $build  = '';
-        $build  .= ($before === $delta
+        $build  .= ( $before === $delta
             ? '...'
-            : '');
-        $build  .= substr($this->data, $start, $before);
-        $build  .= isset($this->data[$offset])
-            ? sprintf('[%s]', $this->data[$offset])
-            : sprintf('<-- #%d', strlen($this->data) - 1);
-        $build  .= substr($this->data, $end, $after);
-        $build  .= ($after === $delta
+            : '' );
+        $build  .= substr( $this->data, $start, $before );
+        $build  .= isset( $this->data[ $offset ] )
+            ? sprintf( '[%s]', $this->data[ $offset ] )
+            : sprintf( '<-- #%d', strlen( $this->data ) - 1 );
+        $build  .= substr( $this->data, $end, $after );
+        $build  .= ( $after === $delta
             ? '...'
-            : '');
+            : '' );
 
         return $build;
     }
 
 
-    private function invalidArrayKeyType($type)
+    private function invalidArrayKeyType( $type ): bool
     {
 
-        return !in_array($type, ['int', 'string']);
+        return !in_array( $type, [ 'int', 'string' ] );
+    }
+
+
+    public function loadValue(
+        $data,
+        ?string $returnFormat = self::DEFAULT_RETURN_FORMAT,
+        bool $failGracefully = true
+    ): ?Value {
+
+        $this->setDumper( $returnFormat );
+
+        switch ( gettype( $data ) )
+        {
+        case 'NULL':
+            $token = NullValue::TYPE_CHAR;
+            break;
+
+        case 'boolean':
+            $token = BoolValue::TYPE_CHAR;
+            break;
+
+        case 'string':
+            $token = StringValue::TYPE_CHAR;
+            break;
+
+        case 'integer':
+            $token = IntValue::TYPE_CHAR;
+            break;
+
+        case 'double':
+            # aka 'float':
+            $token = FloatValue::TYPE_CHAR;
+            break;
+
+        case 'array':
+            $token = ArrayValue::TYPE_CHAR;
+            break;
+
+        case 'object':
+            $token = ObjectValue::TYPE_CHAR;
+            break;
+
+        case 'resource':
+        case 'resource (closed)':
+        default:
+            trigger_error(
+                sprintf( 'Loading value not supported for type %s (in %s)', $this->type, __METHOD__ ),
+                E_USER_WARNING
+            );
+
+            return null;
+        }
+
+        $class = $this->dumper::getTypeClass( $token );
+
+        $value = new $class( $data );
+
+        return $this->data = $value;
     }
 
 
     /**
-     * @param $offset
+     * @param  \Serialized\Dumper  $dumper
      *
-     * @return array(int type, int byte length)
+     * @return string|null Class name of the found value type
      */
-    private function lookupVartype($offset)
+    protected function lookupVarType( bool $failGracefully = false ): ?string
     {
 
-        $serialized = $this->data;
-        $len        = strlen($serialized) - $offset;
-        $error      = [self::TYPE_INVALID, 0];
-        if ($len < 2)
+        $token = $this->getBuffer();
+
+        if ( null !== $token )
         {
-            return $error;
-        }
-        # NULL; fixed length: 2
-        $token = $serialized[$offset];
-        $test  = $serialized[$offset + 1];
-        if ('N' === $token && ';' === $test)
-        {
-            return [self::TYPE_NULL, 0];
-        }
-        if (':' !== $test)
-        {
-            return $error;
-        }
-        if (false === strpos('abCdiOrRsS', $token))
-        {
-            return $error;
+            $test = $this->getBuffer( 1, 1 );
+
+            switch ( $test )
+            {
+            case ':':
+                break;
+
+            case ';':
+                if ( 'N' === $token )
+                {
+                    break;
+                }
+
+            default:
+                if ( $failGracefully )
+                {
+                    return null;
+                }
+
+                throw new ParseException(
+                    sprintf(
+                        'Unexpected char "%s" following type declaration "%s" at offset %d. Expected ":" (or ";" for NULL).',
+                        $test,
+                        $token,
+                        $this->pos - 1
+                    )
+                );
+            }
+
         }
 
-        return [TypeChars::by($token), 2];
+        if ( $token === null || null === ( $class = $this->dumper::getTypeClass( $token ) ) )
+        {
+            if ( $failGracefully )
+            {
+                return null;
+            }
+
+            throw new UnexpectedValueException(
+                sprintf(
+                    'Unable to parse var type %s at offset %d.',
+                    $token ?? 'NULL',
+                    $this->pos - 2
+                )
+            );
+        }
+
+        return $class;
     }
 
 
@@ -262,74 +595,74 @@ class Parser
      * @throws \Serialized\ParseException
      */
     protected function matchRegex(
-        $pattern,
+        string $pattern,
         $offset
-    ) {
+    ): int {
 
         $return  = 0;
         $subject = $this->data;
-        if (!isset($subject[$offset]))
+        if ( !isset( $subject[ $offset ] ) )
         {
             throw new ParseException(
                 sprintf(
                     'Illegal offset #%d ("%s") for pattern, length is #%d.',
                     $offset,
-                    $this->extract($offset),
-                    strlen($subject)
+                    $this->extract( $offset ),
+                    strlen( $subject )
                 )
             );
         }
-        $found = preg_match($pattern, $subject, $matches, PREG_OFFSET_CAPTURE, $offset);
-        if (false === $found)
+        $found = preg_match( $pattern, $subject, $matches, PREG_OFFSET_CAPTURE, $offset );
+        if ( false === $found )
         {
             // @codeCoverageIgnoreStart
             $error = preg_last_error();
             throw new UnexpectedValueException(
-                sprintf('Regular expression ("%s") failed (Error-Code: %d).', $pattern, $error)
+                sprintf( 'Regular expression ("%s") failed (Error-Code: %d).', $pattern, $error )
             );
             // @codeCoverageIgnoreEnd
         }
         $found
-        && isset($matches[0][1])
-        && $matches[0][1] === $offset
-        && $return = strlen($matches[0][0]);
+        && isset( $matches[ 0 ][ 1 ] )
+        && $matches[ 0 ][ 1 ] === $offset
+        && $return = strlen( $matches[ 0 ][ 0 ] );
 
         return $return;
     }
 
 
     /**
-     * @param $offset
+     * @param  int  $offset
      *
      * @return array
      * @throws \Serialized\ParseException
      */
-    private function parseArrayValue($offset)
+    private function parseArrayValue( int $offset )
     {
 
         $offsetStart = $offset;
-        $lenString   = $this->parseRegex('([+]?[0-9]+:{)', $offset);
-        $lenMatch    = strlen($lenString);
-        $lenLen      = (int)$lenString;
+        $lenString   = $this->parseRegex( '([+]?[0-9]+:{)', $offset );
+        $lenMatch    = strlen( $lenString );
+        $lenLen      = (int) $lenString;
         $offset      += $lenMatch;
         $value       = [];
-        for ($elementNumber = 0; $elementNumber < $lenLen; $elementNumber++)
+        for ( $elementNumber = 0 ; $elementNumber < $lenLen ; $elementNumber++ )
         {
-            [$keyHinted, $keyLength] = $this->parseValue($offset);
-            [$keyTypeName] = $keyHinted;
-            if ($this->invalidArrayKeyType($keyTypeName))
+            [ $keyHinted, $keyLength ] = $this->parseValue( $offset );
+            [ $keyTypeName ] = $keyHinted;
+            if ( $this->invalidArrayKeyType( $keyTypeName ) )
             {
                 throw new ParseException(
                     sprintf(
                         'Invalid vartype %s (%d) for array key at offset #%d ("%s").',
                         $keyTypeName,
-                        TypeNames::by($keyTypeName),
+                        TypeNames::by( $keyTypeName ),
                         $offset,
-                        $this->extract($offset)
+                        $this->extract( $offset )
                     )
                 );
             }
-            [$valueHinted, $valueLength] = $this->parseValue($offset += $keyLength);
+            [ $valueHinted, $valueLength ] = $this->parseValue( $offset += $keyLength );
             $offset  += $valueLength;
             $element = [
                 $keyHinted,
@@ -337,113 +670,117 @@ class Parser
             ];
             $value[] = $element;
         }
-        $this->expectChar('}', $offset);
+        $this->expectChar( '}', $offset );
         $len = $offset - $offsetStart + 1;
 
-        return [$value, $len];
+        return [ $value, $len ];
     }
 
 
     /**
-     * @param $offset
+     * @param  int  $offset
      *
      * @return array
      * @throws \Serialized\ParseException
      */
-    private function parseBoolValue($offset)
+    private function parseBoolValue( int $offset )
     {
 
-        $char = $this->data[$offset];
-        if ('0' !== $char && '1' !== $char)
+        $char = $this->data[ $offset ];
+        if ( '0' !== $char && '1' !== $char )
         {
             throw new ParseException(
-                sprintf('Unexpected char "%s" at offset %d. Expected "0" or "1".', $char, $offset)
+                sprintf( 'Unexpected char "%s" at offset %d. Expected "0" or "1".', $char, $offset )
             );
         }
-        $this->expectChar(';', $offset + 1);
-        $valueInt = (int)$char;
-        $value    = (bool)$valueInt;
+        $this->expectChar( ';', $offset + 1 );
+        $valueInt = (int) $char;
+        $value    = (bool) $valueInt;
 
-        return [$value, 2];
+        return [ $value, 2 ];
     }
 
 
     /**
-     * @param $offset
+     * @param  int  $offset
      *
      * @return array
      * @throws \Serialized\ParseException
      */
-    private function parseCustomValue($offset)
+    private function parseCustomValue( int $offset )
     {
 
-        [$className, $classLen] = $this->parseStringValue($offset, ':');
-        $dataLenLength = $this->matchRegex('([0-9]+(?=:))', $offset + $classLen);
-        if (!$dataLenLength)
+        [ $className, $classLen ] = $this->parseStringValue( $offset, ':' );
+        $dataLenLength = $this->matchRegex( '([0-9]+(?=:))', $offset + $classLen );
+        if ( !$dataLenLength )
         {
             throw new ParseException(
-                sprintf('Invalid character sequence for custom vartype at offset %d.', $offset + $classLen)
+                sprintf( 'Invalid character sequence for custom vartype at offset %d.', $offset + $classLen )
             );
         }
-        $dataLengthString = substr($this->data, $offset + $classLen, $dataLenLength);
-        $dataLength       = (int)$dataLengthString;
-        $this->expectChar('{', $offset + $classLen + 1 + $dataLenLength);
-        $this->expectChar('}', $offset + $classLen + 1 + $dataLenLength + 1 + $dataLength);
+        $dataLengthString = substr( $this->data, $offset + $classLen, $dataLenLength );
+        $dataLength       = (int) $dataLengthString;
+        $this->expectChar( '{', $offset + $classLen + 1 + $dataLenLength );
+        $this->expectChar( '}', $offset + $classLen + 1 + $dataLenLength + 1 + $dataLength );
         $data    = $dataLength
-            ? substr($this->data, $offset + $classLen + 1 + $dataLenLength + 1, $dataLength)
+            ? substr( $this->data, $offset + $classLen + 1 + $dataLenLength + 1, $dataLength )
             : '';
         $value   = [
-            [TypeNames::of(self::TYPE_CLASSNAME), $className],
-            [TypeNames::of(self::TYPE_CUSTOMDATA), $data],
+            [ TypeNames::of( self::TYPE_CLASSNAME ), $className ],
+            [ TypeNames::of( self::TYPE_CUSTOMDATA ), $data ],
         ];
         $consume = $classLen + $dataLenLength + 2 + $dataLength + 1;
 
-        return [$value, $consume];
+        return [ $value, $consume ];
     }
 
 
     /**
-     * @param $offset
+     * @param  int  $offset
      *
      * @return array
      * @throws \Serialized\ParseException
      */
-    private function parseFloatValue($offset)
+    private function parseFloatValue( int $offset )
     {
 
         $pattern
              = '((?:[-]?INF|[+-]?(?:(?:[0-9]+|(?:[0-9]*[\.][0-9]+)|(?:[0-9]+[\.][0-9]*))|(?:[0-9]+|(?:([0-9]*[\.][0-9]+)|(?:[0-9]+[\.][0-9]*)))[eE][+-]?[0-9]+));)';
-        $len = $this->matchRegex($pattern, $offset);
-        if (!$len)
+        $len = $this->matchRegex( $pattern, $offset );
+        if ( !$len )
         {
-            throw new ParseException(sprintf('Invalid character sequence for float vartype at offset %d.', $offset));
+            throw new ParseException(
+                sprintf( 'Invalid character sequence for float vartype at offset %d.', $offset )
+            );
         }
-        $valueString = substr($this->data, $offset, $len - 1);
-        $value       = unserialize("d:{$valueString};"); // using unserialize for INF and -INF.
+        $valueString = substr( $this->data, $offset, $len - 1 );
+        $value       = unserialize( "d:{$valueString};" ); // using unserialize for INF and -INF.
 
-        return [$value, $len];
+        return [ $value, $len ];
     }
 
 
     /**
-     * @param $offset
+     * @param  int  $offset
      *
      * @return array
      * @throws \Serialized\ParseException
      */
-    private function parseIntValue($offset)
+    private function parseIntValue( int $offset )
     {
 
-        $len = $this->matchRegex('([-+]?[0-9]+)', $offset);
-        if (!$len)
+        $len = $this->matchRegex( '([-+]?[0-9]+)', $offset );
+        if ( !$len )
         {
-            throw new ParseException(sprintf('Invalid character sequence for integer value at offset %d.', $offset));
+            throw new ParseException(
+                sprintf( 'Invalid character sequence for integer value at offset %d.', $offset )
+            );
         }
-        $this->expectChar(';', $offset + $len);
-        $valueString = substr($this->data, $offset, $len);
-        $value       = (int)$valueString;
+        $this->expectChar( ';', $offset + $len );
+        $valueString = substr( $this->data, $offset, $len );
+        $value       = (int) $valueString;
 
-        return [$value, $len + 1];
+        return [ $value, $len + 1 ];
     }
 
 
@@ -452,10 +789,10 @@ class Parser
      *
      * @throws \Serialized\ParseException
      */
-    private function parseInvalidValue($offset)
+    private function parseInvalidValue( $offset )
     {
 
-        throw new ParseException(sprintf('Invalid ("%s") at offset %d.', $this->extract($offset), $offset));
+        throw new ParseException( sprintf( 'Invalid ("%s") at offset %d.', $this->extract( $offset ), $offset ) );
     }
 
 
@@ -465,89 +802,91 @@ class Parser
      * @return array
      * @throws \Serialized\ParseException
      */
-    private function parseNullValue($offset)
+    private function parseNullValue( $offset )
     {
 
-        $this->expectChar('N', $offset);
-        $this->expectChar(';', $offset + 1);
+        $this->expectChar( 'N', $offset );
+        $this->expectChar( ';', $offset + 1 );
 
-        return [null, 2];
+        return [ null, 2 ];
     }
 
 
     /**
-     * @param $offset
+     * @param  int  $offset
      *
      * @return array
      * @throws \Serialized\ParseException
      */
-    private function parseObjectValue($offset)
+    private function parseObjectValue( int $offset )
     {
 
         $totalLen = 0;
-        [$className, $len] = $this->parseStringValue($offset, ':');
+        [ $className, $len ] = $this->parseStringValue( $offset, ':' );
         $totalLen += $len;
-        [$classMembers, $len] = $this->parseArrayValue($offset + $len);
-        foreach ($classMembers as $index => $member)
+        [ $classMembers, $len ] = $this->parseArrayValue( $offset + $len );
+        foreach ( $classMembers as $index => $member )
         {
-            list(list($typeSpec)) = $member;
-            if ('string' !== $typeSpec)
+            list( list( $typeSpec ) ) = $member;
+            if ( 'string' !== $typeSpec )
             {
                 throw new ParseException(
                     sprintf(
                         'Unexpected type %s, expected string on offset #%d ("%s").',
                         $typeSpec,
                         $offset,
-                        $this->extract($offset)
+                        $this->extract( $offset )
                     )
                 );
             }
-            $classMembers[$index][0][0] = TypeNames::of(self::TYPE_MEMBER);
+            $classMembers[ $index ][ 0 ][ 0 ] = TypeNames::of( self::TYPE_MEMBER );
         }
         $totalLen += $len;
 
-        $count = count($classMembers);
+        $count = count( $classMembers );
         $value = [
-            [TypeNames::of(self::TYPE_CLASSNAME), $className],
-            [TypeNames::of(self::TYPE_MEMBERS), $classMembers],
+            [ TypeNames::of( self::TYPE_CLASSNAME ), $className ],
+            [ TypeNames::of( self::TYPE_MEMBERS ), $classMembers ],
         ];
 
-        return [$value, $totalLen];
+        return [ $value, $totalLen ];
     }
 
 
     /**
-     * @param $offset
+     * @param  int  $offset
      *
      * @return array
      * @throws \Serialized\ParseException
      */
-    private function parseRecursionValue($offset)
+    private function parseRecursionValue( int $offset ): array
     {
 
-        $len = $this->matchRegex('([1-9]+[0-9]*)', $offset);
-        if (!$len)
+        $len = $this->matchRegex( '([1-9]+[0-9]*)', $offset );
+        if ( !$len )
         {
-            throw new ParseException(sprintf('Invalid character sequence for recursion index at offset %d.', $offset));
+            throw new ParseException(
+                sprintf( 'Invalid character sequence for recursion index at offset %d.', $offset )
+            );
         }
-        $this->expectChar(';', $offset + $len);
-        $valueString = substr($this->data, $offset, $len);
-        $value       = (int)$valueString;
+        $this->expectChar( ';', $offset + $len );
+        $valueString = substr( $this->data, $offset, $len );
+        $value       = (int) $valueString;
 
-        return [$value, $len + 1];
+        return [ $value, $len + 1 ];
     }
 
 
     /**
-     * @param $offset
+     * @param  int  $offset
      *
      * @return array
      * @throws \Serialized\ParseException
      */
-    private function parseRecursionrefValue($offset)
+    private function parseRecursionrefValue( int $offset )
     {
 
-        return $this->parseRecursionValue($offset);
+        return $this->parseRecursionValue( $offset );
     }
 
 
@@ -556,121 +895,186 @@ class Parser
      * @param  int     $offset
      *
      * @return string
-     * @throws ParseException
+     * @throws \Serialized\ParseException
      */
     private function parseRegex(
-        $pattern,
-        $offset
-    ) {
+        string $pattern,
+        int $offset
+    ): string {
 
-        $match = $this->matchRegex($pattern, $offset);
-        if (!$match)
+        $match = $this->matchRegex( $pattern, $offset );
+        if ( !$match )
         {
             throw new ParseException(
                 sprintf(
                     'Invalid character sequence for %s at offset #%d ("%s").',
                     $pattern,
                     $offset,
-                    $this->extract($offset)
+                    $this->extract( $offset )
                 )
             );
         }
 
-        return substr($this->data, $offset, $match);
+        return substr( $this->data, $offset, $match );
     }
 
 
     /**
-     * @param $offset
+     * @param  int  $offset
      *
      * @return array
      * @throws \Serialized\ParseException
      */
-    private function parseStringEncodedValue($offset)
+    private function parseStringEncodedValue( int $offset )
     {
 
-        $len    = $this->parseRegex('([+]?[0-9]+:")', $offset);
-        $lenLen = strlen($len);
-        $lenInt = (int)$len;
-        if ($offset + $lenLen + $lenInt > strlen($this->data))
+        $len    = $this->parseRegex( '([+]?[0-9]+:")', $offset );
+        $lenLen = strlen( $len );
+        $lenInt = (int) $len;
+        if ( $offset + $lenLen + $lenInt > strlen( $this->data ) )
         {
             throw new ParseException(
                 sprintf(
                     'String length %d too large for data at offset #%d ("%s").',
                     $lenInt,
                     $offset,
-                    $this->extract($offset)
+                    $this->extract( $offset )
                 )
             );
         }
         $consume = 0;
-        $string  = $this->unserializeString($offset + $lenLen, $lenInt, $consume);
-        $this->expectChar('"', $offset + $lenLen + $consume);
-        $this->expectChar(';', $offset + $lenLen + $consume + 1);
+        $string  = $this->unserializeString( $offset + $lenLen, $lenInt, $consume );
+        $this->expectChar( '"', $offset + $lenLen + $consume );
+        $this->expectChar( ';', $offset + $lenLen + $consume + 1 );
 
-        return [$string, $lenLen + $consume + 2];
-    }
-
-
-    /**
-     * @param          $offset
-     * @param  string  $terminator
-     *
-     * @return array
-     * @throws \Serialized\ParseException
-     */
-    private function parseStringValue(
-        $offset,
-        $terminator = ';'
-    ) {
-
-        $len    = $this->parseRegex('([+]?[0-9]+:")', $offset);
-        $lenLen = strlen($len);
-        $lenInt = (int)$len;
-        $this->expectChar('"', $offset + $lenLen + $lenInt);
-        $this->expectChar($terminator, $offset + $lenLen + $lenInt + 1);
-        $value = substr($this->data, $offset + $lenLen, $lenInt);
-
-        return [$value, $lenLen + $lenInt + 2];
+        return [ $string, $lenLen + $consume + 2 ];
     }
 
 
     /**
      * parse for a serialized value at offset
      *
-     * @param  int  $offset  byte offset
+     * @param  \Serialized\Dumper|null  $returnFormat
      *
      * @return array array notation of serialized value
      */
-    public function parseValue($offset)
+    public function parseValue()
     {
 
-        [$type, $consume] = $this->lookupVartype($offset);
-        $typeName = TypeNames::of($type);
-        $function = sprintf('parse%sValue', ucfirst($typeName));
-        if (!is_callable([$this, $function]))
+        $class = $this->lookupVarType();
+
+        return new $class( $this );
+    }
+
+
+    public function read(
+        int $length = 1,
+        $isLengthRequired = true
+    ): string {
+
+        if ( $length < 0 )
         {
-            // @codeCoverageIgnoreStart
-            throw new UnexpectedValueException(
+            throw new ParseException( sprintf( 'Invalid length %d at #%d!', $length, $this->pos ) );
+        }
+
+        if ( $this->isEof() )
+        {
+            throw new ParseException( sprintf( 'Unexpected EOF at #%d!', $this->pos ) );
+        }
+
+        if ( $length === 0 )
+        {
+            return '';
+        }
+
+        $return    = array_splice( $this->buffer, 0, $length );
+        $lenBuffer = count( $return );
+
+        $this->pos += $lenBuffer;
+
+        if ( $length - $lenBuffer === 0 )
+        {
+
+            return implode( '', $return );
+        }
+
+        try
+        {
+            $buffer = $this->readFromStream( $length - $lenBuffer );
+        }
+        catch ( ParseException $e )
+        {
+            // restore buffer
+            $this->buffer =& $return;
+            $this->pos    -= $lenBuffer;
+
+            throw $e;
+        }
+
+        $lenRead = strlen( $buffer );
+
+        if ( $isLengthRequired && $lenBuffer + $lenRead !== $length )
+        {
+            // append to buffer
+            array_splice( $return, count( $return ), 0, str_split( $buffer ) );
+
+            // restore buffer
+            $this->buffer =& $return;
+            $this->pos    -= $lenBuffer;
+
+            throw new ParseException(
                 sprintf(
-                    'Unable to parse vartype %s (%d) at offset %s. Parsing function %s is not callable',
-                    $typeName,
-                    $type,
-                    $offset,
-                    $function
+                    'Failed to read %d characters at #%d! Only %d read: %s',
+                    $length,
+                    $this->pos,
+                    $lenBuffer + $lenRead,
+                    implode( '', $this->buffer )
                 )
             );
-            // @codeCoverageIgnoreEnd
         }
-        [$value, $len] = $this->$function($offset + $consume);
-        // parse encoded strings as strings (php forward compatibility)
-        if ($type === self::TYPE_STRINGENCODED)
-        {
-            $typeName = TypeNames::of(self::TYPE_STRING);
-        }
-        $hinted = [$typeName, $value];
 
-        return [$hinted, $len + $consume];
+        $this->pos += $lenRead;
+
+        return implode( '', $return ) . $buffer;
+    }
+
+
+    protected function readFromStream(
+        int $length = 1
+    ): string {
+
+        $buffer = fread( $this->data, $length );
+
+        if ( $buffer === false )
+        {
+            throw new ParseException( sprintf( 'Read failed at #%d!', $this->pos ) );
+        }
+
+        return $buffer;
+    }
+
+
+    public function replace(
+        $search,
+        $replace,
+        ?int $flags = null,
+        ?array $callbacks = null
+    ): int {
+        // TODO: Implement replace() method.
+    }
+
+
+    public function serialize()
+    {
+
+        return $this->getSerialized();
+    }
+
+
+    public function unserialize( $serialized )
+    {
+
+        return $this->setSerialized( $serialized );
     }
 
 
@@ -692,17 +1096,17 @@ class Parser
         $consume = 0;
         $subject = $this->data;
         $pos     = $offset;
-        for ($i = 0; $i < $len; $i++)
+        for ( $i = 0 ; $i < $len ; $i++ )
         {
-            if (!isset($subject[$pos]))
+            if ( !isset( $subject[ $pos ] ) )
             {
-                throw new ParseException(sprintf('Unexpected EOF at #%d ("%s")', $pos, $this->extract($pos)));
+                throw new ParseException( sprintf( 'Unexpected EOF at #%d ("%s")', $pos, $this->extract( $pos ) ) );
             }
-            $char = $subject[$pos];
-            if ($char === '\\')
+            $char = $subject[ $pos ];
+            if ( $char === '\\' )
             {
-                $token = $this->parseRegex('([0-9a-fA-F]{2})', $pos + 1);
-                $char  = chr(hexdec($token));
+                $token = $this->parseRegex( '([0-9a-fA-F]{2})', $pos + 1 );
+                $char  = chr( hexdec( $token ) );
                 $pos   += 2;
             }
             $string .= $char;
@@ -717,25 +1121,106 @@ class Parser
     /**
      * parse string of serialized  data into array notation
      *
-     * @param  string  $serialized
+     * @param  string|resource          $serialized
+     * @param  \Serialized\Dumper|null  $returnFormat
      *
      * @return array|false array notation, false on parse error
+     * @throws \Serialized\ParseException
      */
-    public static function parse($serialized)
-    {
+    public static function Factory(
+        $serialized,
+        ?string $returnFormat = self::DEFAULT_RETURN_FORMAT,
+        bool $failGracefully = true
+    ) {
 
-        $parser = new self($serialized);
+        return new self( $serialized, $returnFormat );
+    }
+
+
+    /**
+     * parse string of serialized  data into array notation
+     *
+     * @param  string|resource          $serialized
+     * @param  \Serialized\Dumper|null  $returnFormat
+     *
+     * @return array|false array notation, false on parse error
+     * @throws \Serialized\ParseException
+     */
+    public static function parse(
+        $serialized,
+        ?string $returnFormat = self::DEFAULT_RETURN_FORMAT,
+        bool $failGracefully = true
+    ) {
+
+        $parser = new self( $serialized, $returnFormat );
+
         try
         {
-            $result = $parser->getParsed();
+            $result = $parser->getParsed( $returnFormat );
         }
-        catch (ParseException $e)
+        catch ( ParseException $e )
         {
-            trigger_error(sprintf('Error parsing serialized string: %s', $e->getMessage()), E_USER_WARNING);
+            if ( !$failGracefully )
+            {
+                throw $e;
+            }
+
+            trigger_error( sprintf( 'Error parsing serialized string: %s', $e->getMessage() ), E_USER_WARNING );
             $result = false;
         }
 
         return $result;
+    }
+
+
+    /**
+     * parse string of serialized  data into array notation
+     *
+     * @param  string|resource  $serialized
+     *
+     * @return \Serialized\Value array notation
+     * @throws \Serialized\ParseException
+     * @noinspection PhpUnused
+     * @noinspection PhpMissingParamTypeInspection
+     */
+    public static function parseToArrayNotation( $serialized ): Value
+    {
+
+        return static::parse( $serialized, ArrayNotation::class, false );
+    }
+
+
+    /**
+     * parse string of serialized  data into array notation
+     *
+     * @param  string|resource  $serialized
+     *
+     * @return \Serialized\Value array notation, false on parse error
+     * @throws \Serialized\ParseException
+     * @noinspection PhpUnused
+     * @noinspection PhpMissingParamTypeInspection
+     */
+    public static function parseToObjectArrayNotation( $serialized ): Value
+    {
+
+        return static::parse( $serialized, ObjectArrayNotation::class, false );
+    }
+
+
+    /**
+     * parse string of serialized  data into array notation
+     *
+     * @param  string|resource  $serialized
+     *
+     * @return \Serialized\Value array notation, false on parse error
+     * @throws \Serialized\ParseException
+     * @noinspection PhpUnused
+     * @noinspection PhpMissingParamTypeInspection
+     */
+    public static function parseToObjectNotation( $serialized ): Value
+    {
+
+        return static::parse( $serialized, ObjectNotation::class, false );
     }
 
 }

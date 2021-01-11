@@ -26,18 +26,28 @@
 
 namespace Serialized;
 
+use Serialized\ObjectNotation\SimpleValueInterface;
+
 interface Value
+    extends SimpleValueInterface
 {
+
+    public function getOriginalPos(): ?int;
+
+
     /** @return array */
     public function getParsed();
 
+
     /** @return string */
-    public function getSerialized();
+    public function getSerialized(): string;
+
 
     /** @return string datatype */
-    public function getType();
+    public function getTypeName();
+
 
     /** @param  string  $serialized */
-    public function setSerialized($serialized);
+    public function setSerialized( $serialized );
 
 }

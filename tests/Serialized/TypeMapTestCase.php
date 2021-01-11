@@ -39,21 +39,7 @@ abstract class TypeMapTestCase extends TestCase
 	protected $testValue;
 	protected $testNonExistantType;
 	protected $testNonExistantValue;
-	/**
-	 * Sets up the fixture, for example, opens a network connection.
-	 * This method is called before a test is executed.
-	 */
-	protected function setUp()
-	{
-	}
 
-	/**
-	 * Tears down the fixture, for example, closes a network connection.
-	 * This method is called after a test is executed.
-	 */
-	protected function tearDown()
-	{
-	}
 	protected function mapTestHas($class, $type, $nonExistantType = null) {
 		$class = __NAMESPACE__.'\\'.$class;
 		# test existing

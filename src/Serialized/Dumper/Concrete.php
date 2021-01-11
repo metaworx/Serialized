@@ -28,8 +28,21 @@ namespace Serialized\Dumper;
 
 interface Concrete
 {
-    public function setConfig(array $config);
+    /**
+     * get dump as string
+     *
+     * @param  array  $parsed  serialized array notation data to be dumped.
+     * @param  array  $config  (optional) dumper configuration
+     *
+     * @return string
+     * @throws \Exception
+     */
+    public function getDump(
+        array $parsed,
+        array $config = []
+    ): string;
 
+    public function setConfig(array $config);
 
     public function dump(
         array $parsed,
