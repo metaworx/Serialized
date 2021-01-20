@@ -19,19 +19,71 @@
  * <http://www.gnu.org/licenses/> and please report back to the original
  * author.
  *
- * @author Tom Klingenberg <http://lastflood.com/>
+ * @author  Tom Klingenberg <http://lastflood.com/>
  * @version 0.2.5
  * @package Examples
  */
 
-  Namespace Serialized;
+namespace Serialized;
 
-  require_once(__DIR__.'/../../src/Serialized.php');
+require_once( __DIR__ . '/../../src/Serialized.php' );
 
-  $data = 'fooBar';
 
-  $serialized = serialize($data);
+class testClass
+{
 
-  $arrayNotation = Parser::Parse($serialized);
+    //  public properties
+    public $publicProperty = 'x';
 
-  var_export($arrayNotation);
+    // protected properties
+    protected $protectedProperty = 'y';
+
+    // private properties
+    private $privateProperty = 'z';
+
+}
+
+
+$x = new testClass();
+
+$data = [
+    'fooBar',
+    'test'      => 'Test [string]',
+    'null'      => null,
+    'int'       => 5,
+    'float1'    => 3.9,
+    'float2'    => (float) 9,
+    'true'      => true,
+    'false'     => false,
+    8.1         => 'float3',
+    null        => 'null',
+    ''          => 'empty string',
+    'stdObj1'   => (object) [],
+    'stdObj2'   => (object) [ 'hallo' => 'echo', ],
+    'testClass' => $x,
+];
+
+$serialized = serialize( $data );
+
+$arrayNotation  = Parser::Parse( $serialized );
+$objectNotation = Parser::parseToObjectNotation( $serialized );
+
+$serialized2 = $objectNotation->serialize();
+
+echo "\n";
+echo "$serialized\n";
+echo "$serialized2\n";
+
+$objectNotation->replace( "foo", "Neue" );
+$serialized2 = $objectNotation->serialize();
+
+echo "\n";
+echo "$serialized\n";
+echo "$serialized2\n";
+
+$data2 = unserialize( $serialized2, true );
+
+$serialized2 = serialize( $objectNotation );
+echo "$serialized2\n";
+
+//print_r( $arrayNotation );

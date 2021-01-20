@@ -55,9 +55,14 @@ class Parser
     // protected properties
 
     /**
-     * @var resource serialized
+     * @var resource
      */
     protected $data;
+
+    /**
+     * @var resource
+     */
+    protected $backup;
 
     protected $buffer   = [];
 
@@ -253,6 +258,21 @@ class Parser
     }
 
 
+    public function getProcessedString(): ?string
+    {
+
+        if ( $this->backup === null )
+        {
+            return null;
+        }
+
+        rewind( $this->backup );
+
+        return fread( $this->backup, $this->getPos() )
+            ?: '';
+    }
+
+
     public function getSerialized(): string
     {
 
@@ -312,7 +332,6 @@ class Parser
 
         if ( is_string( $serialized ) )
         {
-            /** @noinspection FopenBinaryUnsafeUsageInspection */
             $this->data = fopen( 'php://temp', 'r+' );
             fwrite( $this->data, $serialized );
             rewind( $this->data );
@@ -330,6 +349,13 @@ class Parser
         {
             $this->data = $serialized;
         };
+
+        if ( $this->backup !== null )
+        {
+            fclose( $this->backup );
+        }
+
+        $this->backup = fopen( 'php://temp', 'w+' );
 
         return $this;
     }
@@ -1049,6 +1075,8 @@ class Parser
         {
             throw new ParseException( sprintf( 'Read failed at #%d!', $this->pos ) );
         }
+
+        fwrite( $this->backup, $buffer );
 
         return $buffer;
     }

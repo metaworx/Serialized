@@ -313,11 +313,12 @@ abstract class AbstractValue
         {
             throw new ParseException(
                 sprintf(
-                    "%s '%s' at pos #%d (got '%s')",
+                    "%s '%s' at pos #%d (got '%s')\n\n%s",
                     $errMessage ?? 'Missing string',
                     $string,
                     $this->parser->getPos(),
-                    $x
+                    $x,
+                    $this->parser->getProcessedString()
                 )
             );
         }
