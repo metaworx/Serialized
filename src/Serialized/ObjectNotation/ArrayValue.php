@@ -32,7 +32,6 @@ class ArrayValue
                 $class
             )
             {
-                $value =
                 $val = new $class( $key, $val );
 
             },
@@ -41,6 +40,8 @@ class ArrayValue
 
         $this->data = new  $data();
         $this->assertInternalDataType();
+
+        return $this;
     }
 
 
