@@ -306,9 +306,10 @@ class SearchAndReplace
     public function replaceValueString(): int
     {
 
+        $count = 0;
+
         if ( AbstractValue::isLookingSerialized( $this->subject ) )
         {
-            $count = 0;
 
             try
             {
@@ -397,7 +398,7 @@ class SearchAndReplace
                 //{
                 //    continue;
                 //}
-                $this->count += count( $parts ) - 1;
+                //$this->count += count( $parts ) - 1;
                 $temp        = \mb_ereg_replace( $s, $r, $temp, 'z' );
             }
 
