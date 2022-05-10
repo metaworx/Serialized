@@ -49,6 +49,8 @@ class SearchAndReplace
 
     public bool   $searchPerformed = false;
 
+    public ?array $base64encode    = null;
+
 
     /**
      * SearchAndReplace constructor.
