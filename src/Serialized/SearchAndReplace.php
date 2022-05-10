@@ -320,7 +320,7 @@ class SearchAndReplace
                 ) )
                 {
                     $this->subject = $unserialized->serialize();
-                };
+                }
             }
             catch ( ParseException $e )
             {
