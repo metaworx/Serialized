@@ -87,12 +87,6 @@ class SearchAndReplace
     public function getCloneFor( &$subject = null ): self
     {
 
-        if ( $subject === null )
-        {
-            ;
-            //$subject =& $this->subject;
-        }
-
         return new self( $this->search, $this->replace, $subject, $this->flags, $this->callbacks );
     }
 
