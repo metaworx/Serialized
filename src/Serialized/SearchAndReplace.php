@@ -192,7 +192,7 @@ class SearchAndReplace
                 return 0;
             }
 
-            $this->replaceValueString( $this );
+            $this->replaceValueString();
             break;
 
         case 'integer':
@@ -201,7 +201,7 @@ class SearchAndReplace
                 return 0;
             }
 
-            $this->replaceValueString( $this );
+            $this->replaceValueString();
             break;
 
         case 'double':
@@ -211,7 +211,7 @@ class SearchAndReplace
                 return 0;
             }
 
-            $this->replaceValueString( $this );
+            $this->replaceValueString();
             break;
 
         case 'array':
