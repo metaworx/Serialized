@@ -80,7 +80,7 @@ class SearchAndReplace
     function getCallback(): ?callable
     {
 
-        return $this->callbacks[ $this->type ] ?? $this->callbacks[ 0 ] ?? null;
+        return $this->callbacks[ $this->type ] ?? $this->callbacks[0] ?? null;
     }
 
 
@@ -137,7 +137,7 @@ class SearchAndReplace
                 foreach ( (array) $this->search as $s )
                 {
                     // check if search string can be evaluated as regex. If not, preg_match will return false;
-                    if ( !static::isPerlRegex( $s ) )
+                    if ( ! static::isPerlRegex( $s ) )
                     {
                         $regex = false;
                         break;
@@ -168,12 +168,12 @@ class SearchAndReplace
     public function replaceValue(): int
     {
 
-        if ( !$this->continue )
+        if ( ! $this->continue )
         {
             return $this->count;
         }
 
-        if ( !$this->callBack() )
+        if ( ! $this->callBack() )
         {
             return $this->count;
         }
@@ -227,20 +227,18 @@ class SearchAndReplace
                 if ( $this->flags & ( self::REPLACE_FLAG_PROCESS_ARRAY_VALUES ) )
                 {
                     $this->count += $this->getCloneFor( $item )
-                                         ->replaceValue()
-                    ;
+                                         ->replaceValue();
                 }
 
                 if ( $this->flags & ( self::REPLACE_FLAG_PROCESS_ARRAY_KEYS ) )
                 {
                     $this->count += $this->getCloneFor( $key )
-                                         ->replaceValue()
-                    ;
+                                         ->replaceValue();
                     $new[ $key ] = $item;
                 }
             }
 
-            if ( !empty( $new ) )
+            if ( ! empty( $new ) )
             {
                 $this->subject = $new;
             }
@@ -266,11 +264,9 @@ class SearchAndReplace
             unset ( $array );
 
             $this->count += $this->getCloneFor( $translated )
-                                 ->replaceValue()
-            ;
+                                 ->replaceValue();
             $this->count += $this->getCloneFor( $values )
-                                 ->replaceValue()
-            ;
+                                 ->replaceValue();
 
             $translated = array_combine( $properties, $translated );
             $properties = array_flip( $properties );
@@ -343,8 +339,7 @@ class SearchAndReplace
             }
 
             $count += $this->getCloneFor( $decoded )
-                           ->replaceValue()
-            ;
+                           ->replaceValue();
 
             $this->subject = json_encode( $decoded, JSON_NUMERIC_CHECK + JSON_THROW_ON_ERROR, 512 );
 
@@ -403,7 +398,7 @@ class SearchAndReplace
                 $this->search,
                 $this->replace,
                 $this->subject,
-                -1,
+                - 1,
                 $this->count
             );
         }
@@ -449,16 +444,16 @@ class SearchAndReplace
     public static function regexNormalizeWhitespace( ?string $regex ): ?string
     {
 
-        if ( !preg_match( '/^(?<delim>.)(?<regex>.+)\1(?<flags>[gmixXsuUAJD]*)$/s', $regex, $matches ) )
+        if ( ! preg_match( '/^(?<delim>.)(?<regex>.+)\1(?<flags>[gmixXsuUAJD]*)$/s', $regex, $matches ) )
         {
             return $regex;
         }
 
-        $delim = $matches[ 'delim' ];
-        $regex = $matches[ 'regex' ];
-        $flags = str_split( $matches[ 'flags' ] ?? '' );
+        $delim = $matches['delim'];
+        $regex = $matches['regex'];
+        $flags = str_split( $matches['flags'] ?? '' );
 
-        if ( !in_array( 'x', $flags, true ) )
+        if ( ! in_array( 'x', $flags, true ) )
         {
             return $regex;
         }
@@ -480,14 +475,14 @@ class SearchAndReplace
         $connection = null
     ): ?string {
 
-        if ( !preg_match( '/^(?<delim>.)(?<regex>.+)\1(?<flags>[gmixXsuUAJD]*)$/s', $regex, $matches ) )
+        if ( ! preg_match( '/^(?<delim>.)(?<regex>.+)\1(?<flags>[gmixXsuUAJD]*)$/s', $regex, $matches ) )
         {
             return null;
         }
 
-        $delim = $matches[ 'delim' ];
-        $regex = $matches[ 'regex' ];
-        $flags = str_split( $matches[ 'flags' ] ?? '' );
+        $delim = $matches['delim'];
+        $regex = $matches['regex'];
+        $flags = str_split( $matches['flags'] ?? '' );
 
         $replace = [
             "\\$delim" => $delim,
@@ -504,7 +499,7 @@ class SearchAndReplace
 
         if ( in_array( 'x', $flags, true ) )
         {
-            $replace[ '@(?<!\\\\|\[)\s@' ] = '';
+            $replace['@(?<!\\\\|\[)\s@'] = '';
         }
 
         $regex = preg_replace( array_keys( $replace ), array_values( $replace ), $regex );
@@ -525,7 +520,7 @@ class SearchAndReplace
                     return null;
                 }
 
-                if ( !$connection->errorCode() == 0 )
+                if ( ! $connection->errorCode() == 0 )
 
                 {
                     return $regex;
@@ -548,7 +543,7 @@ class SearchAndReplace
                 return $regex;
             }
 
-            if ( !is_resource( $connection ) )
+            if ( ! is_resource( $connection ) )
             {
                 return null;
             }
