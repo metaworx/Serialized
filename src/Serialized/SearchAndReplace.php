@@ -77,14 +77,14 @@ class SearchAndReplace
     }
 
 
-    function getCallback(): ?callable
+    public function getCallback(): ?callable
     {
 
         return $this->callbacks[ $this->type ] ?? $this->callbacks[0] ?? null;
     }
 
 
-    function getCloneFor( &$subject = null ): self
+    public function getCloneFor( &$subject = null ): self
     {
 
         if ( $subject === null )
@@ -440,7 +440,7 @@ class SearchAndReplace
     }
 
 
-    public static function isPerlRegex( $regex )
+    public static function isPerlRegex( $regex ): bool
     {
 
         // check if search string can be evaluated as regex. If not, preg_match will return false;
