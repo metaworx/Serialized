@@ -331,9 +331,17 @@ class SearchAndReplace
             return $this->count += $count;
         }
 
-        $decoded = json_decode( $this->subject, true, 512, JSON_BIGINT_AS_STRING );
+        try
+        {
+            $decoded = json_decode( $this->subject, true, 512, JSON_THROW_ON_ERROR | JSON_BIGINT_AS_STRING );
+        }
+        catch ( \JsonException $exception )
+        {
+            unset( $exception );
+            $decoded = null;
+        }
 
-        if ( json_last_error() === JSON_ERROR_NONE && ( is_array( $decoded ) || is_object( $decoded ) ) )
+        if ( ( is_array( $decoded ) || is_object( $decoded ) ) && json_last_error() === JSON_ERROR_NONE )
         {
             if ( empty( $decoded ) )
             {
@@ -343,7 +351,7 @@ class SearchAndReplace
             $count += $this->getCloneFor( $decoded )
                            ->replaceValue();
 
-            $this->subject = json_encode( $decoded, JSON_NUMERIC_CHECK + JSON_THROW_ON_ERROR, 512 );
+            $this->subject = json_encode( $decoded, JSON_NUMERIC_CHECK + JSON_THROW_ON_ERROR );
 
             return $this->count += $count;
         }
