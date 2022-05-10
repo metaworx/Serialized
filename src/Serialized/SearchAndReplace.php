@@ -360,6 +360,7 @@ class SearchAndReplace
         }
 
         unset( $decoded );
+        $temp = null;
 
         if ( $this->flags & self::REPLACE_FLAG_REGULAR )
         {
@@ -399,7 +400,7 @@ class SearchAndReplace
                 //    continue;
                 //}
                 //$this->count += count( $parts ) - 1;
-                $temp        = \mb_ereg_replace( $s, $r, $temp, 'z' );
+                $temp = \mb_ereg_replace( $s, $r, $temp, 'z' );
             }
 
             $this->subject = $temp;
