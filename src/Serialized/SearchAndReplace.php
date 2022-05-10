@@ -165,6 +165,10 @@ class SearchAndReplace
     }
 
 
+    /**
+     * @throws \Serialized\ParseException
+     * @throws \JsonException
+     */
     public function replaceValue(): int
     {
 
@@ -299,6 +303,10 @@ class SearchAndReplace
     }
 
 
+    /**
+     * @throws \Serialized\ParseException
+     * @throws \JsonException
+     */
     public function replaceValueString(): int
     {
 
@@ -355,7 +363,7 @@ class SearchAndReplace
 
         elseif ( $this->flags & self::REPLACE_FLAG_MULTI_BYTE )
         {
-            // Normalize $search and $replace so they are both arrays of the same length
+            // Normalize $search and $replace, so they are both arrays of the same length
             $searches     = array_values( (array) $this->search );
             $replacements = array_values( (array) $this->replace );
 
@@ -459,7 +467,7 @@ class SearchAndReplace
         }
 
         $replace = [
-            // non-capturing and named parentesis
+            // non-capturing and named parenthesis
             '@\s*(?<!\\\\)#.*\n@s' => '',
             '@(?<!\\\\|\[)\s@'     => '',
         ];
@@ -492,7 +500,7 @@ class SearchAndReplace
         $regex = str_replace( array_keys( $replace ), array_values( $replace ), $regex );
 
         $replace = [
-            // non-capturing and named parentesis
+            // non-capturing and named parenthesis
             '@(?<!\\\\)\(\?(\:|P?[<\']\w+[>\'])@' => '(',
             '@\\(\\?<![^)]+\\)@'                  => '',
         ];
@@ -550,6 +558,7 @@ class SearchAndReplace
 
             try
             {
+                /** @noinspection PhpParamsInspection */
                 mysqli_query( $connection, $sql );
             }
             catch ( \Exception $e )
