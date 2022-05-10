@@ -143,7 +143,7 @@ class SearchAndReplace
                     : self::REPLACE_FLAG_REGULAR;
             }
 
-            // check if is single or multi byte
+            // check if is single or multibyte
             if ( ( $flags & self::REPLACE_FLAG_MULTI_BYTE ) === 0 && ( $flags & self::REPLACE_FLAG_SINGLE_BYTE ) === 0 )
             {
                 // clear both
