@@ -138,7 +138,7 @@ abstract class AbstractValue
     public function setData( $data )
     {
 
-        if ( !$data instanceof Value )
+        if ( ! $data instanceof Value )
         {
             if ( static::isLookingSerialized( $data ) )
             {
@@ -447,8 +447,45 @@ abstract class AbstractValue
         ?int &$leadingZeros = 0
     ): int {
 
+        $num = $this->parseNum( $deliminator, $deliminatorFound, $leadingZeros );
+
+        $int = filter_var(
+            $num,
+            FILTER_VALIDATE_INT,
+            [
+            ]
+        );
+
+        if ( $int === false )
+        {
+            throw new ParseException(
+                sprintf(
+                    "Invalid integer '%s' while reading length at pos #%d",
+                    $num,
+                    $this->parser->getPos()
+                )
+            );
+        }
+
+        return $int;
+    }
+
+
+    /**
+     * @param  string|string[]  $deliminator
+     *
+     * @return int
+     * @throws \Serialized\ParseException
+     */
+    protected function parseNum(
+        $deliminator = ';',
+        &$deliminatorFound = null,
+        ?int &$leadingZeros = 0
+    ) {
+
         $signAllowed  = true;
-        $len          = '';
+        $len          = 0;
+        $num          = '';
         $sign         = '';
         $leadingZeros = 0;
 
@@ -478,7 +515,7 @@ abstract class AbstractValue
                 );
 
             case '0' :
-                if ( $len === '' )
+                if ( $len === 0 )
                 {
                     $leadingZeros++;
                     break;
@@ -492,7 +529,8 @@ abstract class AbstractValue
             case '7' :
             case '8' :
             case '9' :
-                $len .= $buffer;
+                $num .= $buffer;
+                $len ++;
                 break;
 
             case $deliminator:
@@ -518,13 +556,13 @@ abstract class AbstractValue
             $signAllowed = false;
         }
 
-        if ( $len === '' && $leadingZeros-- )
+        if ( $len === 0 && $leadingZeros-- )
         {
             return 0;
         }
 
         $int = filter_var(
-            $len,
+            $num,
             FILTER_VALIDATE_INT,
             [
                 'options' => [
@@ -533,23 +571,20 @@ abstract class AbstractValue
             ]
         );
 
-        if ( $int === false )
+        if ( $int !== false )
         {
-            throw new ParseException(
-                sprintf(
-                    "Invalid integer '%s' while reading length at pos #%d",
-                    $len,
-                    $this->parser->getPos()
-                )
-            );
+            if ( $sign === '-' )
+            {
+                return - $int;
+            }
         }
 
         if ( $sign === '-' )
         {
-            return -$int;
+            return "-$num";
         }
 
-        return $int;
+        return $num;
     }
 
 

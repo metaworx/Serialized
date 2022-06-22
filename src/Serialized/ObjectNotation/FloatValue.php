@@ -24,12 +24,12 @@ class FloatValue
     {
 
         $val = '';
-        $val .= $this->parseInt( [ '.', ';' ], $delim );
+        $val .= $this->parseNum( [ '.', ';' ], $delim );
 
         if ( $delim === '.' )
         {
             $val .= $delim;
-            $i   = $this->parseInt( [ 'E', 'e', ';' ], $delim, $leadingZeros );
+            $i   = $this->parseNum( [ 'E', 'e', ';' ], $delim, $leadingZeros );
             $val .= str_repeat( '0', $leadingZeros );
             $val .= $i;
         }
@@ -37,7 +37,7 @@ class FloatValue
         if ( $delim === 'E' || $delim === 'e' )
         {
             $val .= $delim;
-            $val .= $this->parseInt();
+            $val .= $this->parseNum();
         }
 
         $this->data = filter_var( $val, FILTER_VALIDATE_FLOAT );
