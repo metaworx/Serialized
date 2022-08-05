@@ -2,13 +2,15 @@
 
 namespace Serialized\ObjectNotation;
 
+use Exception;
 use Serialized\ParseException;
 use Serialized\Parser;
 use Serialized\Value;
 use Serialized\ValueTypes;
 
 abstract class AbstractValue
-    implements Value
+    implements
+    Value
 {
 
     use SimpleValueTrait;
@@ -17,7 +19,7 @@ abstract class AbstractValue
     protected const DEFAULT_DELIMITER   = self::TYPE_DELIMITER;
     protected const DEFAULT_TERMINATION = self::TYPE_TERMINATION;
 
-    public const TYPE      = -1;
+    public const TYPE      = - 1;
     public const TYPE_CHAR = '';
 
     public const TYPE_DELIMITER = ':';
@@ -59,6 +61,34 @@ abstract class AbstractValue
             $this->setData( $data );
         }
 
+    }
+
+
+    public function __debugInfo()
+    {
+
+        return [
+            'data'        => $this->data,
+            'originalPos' => $this->originalPos,
+        ];
+    }
+
+
+    public function __serialize(): array
+    {
+
+        return [
+            'data'        => $this->data,
+            'originalPos' => $this->originalPos,
+        ];
+    }
+
+
+    public function __unserialize( array $data ): void
+    {
+
+        $this->data        = $data['data'];
+        $this->originalPos = $data['originalPos'];
     }
 
 
@@ -211,34 +241,6 @@ abstract class AbstractValue
     }
 
 
-    public function __debugInfo()
-    {
-
-        return [
-            'data'        => $this->data,
-            'originalPos' => $this->originalPos,
-        ];
-    }
-
-
-    public function __serialize(): array
-    {
-
-        return [
-            'data'        => $this->data,
-            'originalPos' => $this->originalPos,
-        ];
-    }
-
-
-    public function __unserialize( array $data ): void
-    {
-
-        $this->data        = $data[ 'data' ];
-        $this->originalPos = $data[ 'originalPos' ];
-    }
-
-
     protected function asserDataType(
         $caller,
         $validator,
@@ -255,7 +257,7 @@ abstract class AbstractValue
             );
         }
 
-        elseif ( !$validator( $data ) )
+        elseif ( ! $validator( $data ) )
         {
             $e = $this->throwInvalidData( $data );
         }
@@ -305,7 +307,7 @@ abstract class AbstractValue
 
 
     protected function assertParserData(
-        string $string,
+        string  $string,
         ?string $errMessage = null
     ): string {
 
@@ -337,7 +339,7 @@ abstract class AbstractValue
     protected function assertStreamType()
     {
 
-        if ( !$this->parser instanceof Parser )
+        if ( ! $this->parser instanceof Parser )
         {
             if ( $this instanceof NullValue )
             {
@@ -391,6 +393,8 @@ abstract class AbstractValue
         $this->assertNativeDataType( $data );
         $this->data = $data;
         $this->assertInternalDataType();
+
+        return $this;
     }
 
 
@@ -421,7 +425,7 @@ abstract class AbstractValue
 
         $this->assertParserData( '{', "Missing array opening mark" );
 
-        for ( $i = 0 ; $i < $len ; $i++ )
+        for ( $i = 0; $i < $len; $i ++ )
         {
             $key = $this->parser->parseValue();
             $val = $this->parser->parseValue();
@@ -472,6 +476,16 @@ abstract class AbstractValue
 
 
     /**
+     * @throws \Serialized\ParseException
+     */
+    protected function parseLength(): int
+    {
+
+        return $this->parseInt( ':' );
+    }
+
+
+    /**
      * @param  string|string[]  $deliminator
      *
      * @return int
@@ -489,7 +503,7 @@ abstract class AbstractValue
         $sign         = '';
         $leadingZeros = 0;
 
-        if ( !$this->parser instanceof Parser )
+        if ( ! $this->parser instanceof Parser )
         {
             throw new ParseException(
                 sprintf( "Invalid data type" )
@@ -517,7 +531,7 @@ abstract class AbstractValue
             case '0' :
                 if ( $len === 0 )
                 {
-                    $leadingZeros++;
+                    $leadingZeros ++;
                     break;
                 }
             case '1' :
@@ -556,7 +570,7 @@ abstract class AbstractValue
             $signAllowed = false;
         }
 
-        if ( $len === 0 && $leadingZeros-- )
+        if ( $len === 0 && $leadingZeros -- )
         {
             return 0;
         }
@@ -591,16 +605,6 @@ abstract class AbstractValue
     /**
      * @throws \Serialized\ParseException
      */
-    protected function parseLength(): int
-    {
-
-        return $this->parseInt( ':' );
-    }
-
-
-    /**
-     * @throws \Serialized\ParseException
-     */
     protected function parseString(): string
     {
 
@@ -624,7 +628,7 @@ abstract class AbstractValue
     {
 
         $type  = $this->getTypeChar();
-        $delim = $this->getDelimiter( !empty( $type ) );
+        $delim = $this->getDelimiter( ! empty( $type ) );
         $value = $this->serializeValue();
         $term  = $this->getTermination();
 
@@ -708,9 +712,9 @@ abstract class AbstractValue
     public static function __set_state( $an_array )
     {
 
-        $data              = $an_array[ 'data' ] ?? null;
+        $data              = $an_array['data'] ?? null;
         $self              = new static( $data );
-        $self->originalPos = $an_array[ 'originalPos' ] ?? null;
+        $self->originalPos = $an_array['originalPos'] ?? null;
 
         return $self;
     }
@@ -744,7 +748,7 @@ abstract class AbstractValue
     ): bool {
 
         // if it isn't a string, it isn't a serialized.
-        if ( !is_string( $data ) )
+        if ( ! is_string( $data ) )
         {
             return false;
         }
@@ -758,13 +762,13 @@ abstract class AbstractValue
         }
 
         // get identifier
-        $identifier = $data[ 0 ];
+        $identifier = $data[0];
 
         // get value class (if exists)
         $valueClass = ValueTypes::TYPE_IDENTIFIERS[ $identifier ] ?? null;
 
         // if no a valid identifier, there will be no value class
-        if ( $valueClass === null || !class_exists( $valueClass ) )
+        if ( $valueClass === null || ! class_exists( $valueClass ) )
         {
             return false;
         }
@@ -786,7 +790,7 @@ abstract class AbstractValue
             }
 
             // check if found identifier is among the ones accepted
-            if ( !in_array( $identifier, $dataType, true ) )
+            if ( ! in_array( $identifier, $dataType, true ) )
             {
                 return false;
             }
@@ -811,13 +815,13 @@ abstract class AbstractValue
     ): bool {
 
         // check if current value class defines a DELIMITER and if so, whether they match
-        if ( static::TYPE_DELIMITER && $data[ 1 ] !== static::TYPE_DELIMITER )
+        if ( static::TYPE_DELIMITER && $data[1] !== static::TYPE_DELIMITER )
         {
             return false;
         }
 
         // check if current value class defines a TERMINATOR and if so, whether they match
-        if ( static::TYPE_TERMINATION && static::TYPE_TERMINATION !== substr( $data, -1 ) )
+        if ( static::TYPE_TERMINATION && static::TYPE_TERMINATION !== substr( $data, - 1 ) )
         {
             return false;
         }
